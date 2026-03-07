@@ -89,7 +89,7 @@ export function triggerConfetti(options: ConfettiOptions = {}): void {
     const shape = Math.random();
 
     let borderRadius = '2px';
-    let width = `${size}px`;
+    const width = `${size}px`;
     let height = `${size * 0.6}px`;
 
     if (shape > 0.66) {
