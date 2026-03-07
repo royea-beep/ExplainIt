@@ -75,16 +75,27 @@ export function validateUrl(input: string): { valid: true; url: string } | { val
  */
 export async function validateResolvedIp(hostname: string): Promise<{ safe: true } | { safe: false; error: string }> {
   try {
-    const addresses = await dns.resolve4(hostname);
-    for (const addr of addresses) {
+    const [ipv4Results, ipv6Results] = await Promise.allSettled([
+      dns.resolve4(hostname),
+      dns.resolve6(hostname),
+    ]);
+
+    const allAddresses: string[] = [];
+    if (ipv4Results.status === 'fulfilled') allAddresses.push(...ipv4Results.value);
+    if (ipv6Results.status === 'fulfilled') allAddresses.push(...ipv6Results.value);
+
+    if (allAddresses.length === 0) {
+      return { safe: false, error: 'DNS resolution failed' };
+    }
+
+    for (const addr of allAddresses) {
       if (isPrivateIp(addr)) {
         return { safe: false, error: `Hostname "${hostname}" resolves to private IP ${addr}` };
       }
     }
     return { safe: true };
   } catch {
-    // DNS resolution failed — could be a valid but offline host
-    return { safe: true };
+    return { safe: false, error: 'DNS resolution failed' };
   }
 }
 
