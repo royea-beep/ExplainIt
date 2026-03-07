@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Header } from "./components/header";
 import { useLanguage } from "@/lib/language-context";
+import { triggerConfetti } from "@/lib/confetti";
 
 type InputType = "url";
 type Stage = "idle" | "intake" | "capture" | "produce" | "document" | "done" | "error";
@@ -130,6 +131,7 @@ export default function Home() {
           setIsRunning(false);
           isRunningRef.current = false;
           if (data.result) setResult(data.result);
+          if (data.status.stage === "done") triggerConfetti();
         }
       } catch {
         stopPolling();

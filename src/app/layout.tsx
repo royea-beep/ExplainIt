@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { LanguageProvider } from "@/lib/language-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ProjectLearner } from "@/components/ProjectLearner";
+import { ShareButton } from "@/components/ShareButton";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -30,6 +31,7 @@ export default function RootLayout({
           </LanguageProvider>
         </ErrorBoundary>
         <ProjectLearner />
+        <ShareButton />
       </body>
     </html>
   );

@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { Header } from "../components/header";
 import { useLanguage } from "@/lib/language-context";
+import { triggerConfetti } from "@/lib/confetti";
 
 interface StepHighlight {
   id: number;
@@ -193,6 +194,7 @@ export default function EditorPage() {
 
       setGeneratingStatus(isHe ? "!\u05D4\u05D5\u05E9\u05DC\u05DD" : "Complete!");
       setPhase("done");
+      triggerConfetti();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setGeneratingStatus("");
