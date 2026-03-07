@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { LanguageProvider } from "@/lib/language-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ProjectLearner } from "@/components/ProjectLearner";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -28,6 +29,7 @@ export default function RootLayout({
             {children}
           </LanguageProvider>
         </ErrorBoundary>
+        <ProjectLearner />
       </body>
     </html>
   );
