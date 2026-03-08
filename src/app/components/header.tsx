@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/", labelHe: "URL Mode", labelEn: "URL Mode" },
   { href: "/editor", labelHe: "Smart Mode", labelEn: "Smart Mode" },
   { href: "/results", labelHe: "Results", labelEn: "Results" },
+  { href: "/pricing", labelHe: "תמחור", labelEn: "Pricing" },
 ] as const;
 
 export function Header() {

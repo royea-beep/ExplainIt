@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  name          String?
+  plan          String   @default("FREE") // FREE | PRO | TEAM
+  lemonCustomerId    String? @unique @map("lemon_customer_id")
+  lemonSubscriptionId String? @map("lemon_subscription_id")
+  subscriptionStatus String @default("inactive") @map("subscription_status") // inactive | active | cancelled | past_due
+  currentPeriodEnd   DateTime? @map("current_period_end")
+  pipelinesThisMonth Int      @default(0) @map("pipelines_this_month")
+  billingCycleStart   DateTime @default(now()) @map("billing_cycle_start")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  refreshTokens RefreshToken[]
+  pipelines     Pipeline[]
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Pipeline {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("pipelines")
+}

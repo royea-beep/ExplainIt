@@ -3,14 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "jose": "^5.9.6",
+    "@prisma/client": "^6.19.2",
     "@royea/flush-queue": "file:../FlushQueue",
     "@royea/shared-utils": "file:../shared-utils",
     "next": "14.2.35",
@@ -18,7 +21,8 @@
     "playwright": "^1.58.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -32,6 +36,7 @@
     "eslint-config-next": "14.2.35",
     "jsdom": "^28.1.0",
     "postcss": "^8",
+    "prisma": "^6.19.2",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
     "vitest": "^4.0.18"

@@ -3,6 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { Pipeline, type PipelineInput } from '@/lib/pipeline';
 import { validateUrl, validateResolvedIp, clampMaxScreens } from '@royea/shared-utils/validate-url';
 import { checkRateLimit, getClientIp, HEAVY_LIMIT, API_READ_LIMIT } from '@royea/shared-utils/rate-limit';
+import { getUserIdFromRequest } from '@/lib/auth';
+import { getSubscription, PLANS } from '@/lib/payments';
+import { prisma } from '@/lib/db';
 
 const MAX_PIPELINES = 10;
 const PIPELINE_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -45,6 +48,41 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 export async function POST(request: NextRequest) {
+  const userId = await getUserIdFromRequest(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { billingCycleStart: true },
+  });
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 401 });
+  }
+
+  const sub = await getSubscription(userId);
+  const plan = sub?.plan ?? 'FREE';
+  const limitConfig = PLANS[plan];
+  const maxPipelines = limitConfig.pipelinesPerMonth;
+
+  if (maxPipelines >= 0) {
+    const count = await prisma.pipeline.count({
+      where: {
+        userId,
+        createdAt: { gte: user.billingCycleStart },
+      },
+    });
+    if (count >= maxPipelines) {
+      return NextResponse.json(
+        {
+          error: `Pipeline limit reached (${maxPipelines}/${maxPipelines} for ${plan} this month). Upgrade for more.`,
+        },
+        { status: 429 }
+      );
+    }
+  }
+
   // Rate limit
   const ip = getClientIp(request);
   const limit = checkRateLimit(`pipeline:post:${ip}`, HEAVY_LIMIT);
@@ -97,6 +135,10 @@ export async function POST(request: NextRequest) {
       maxScreens: clampMaxScreens(body.maxScreens),
       credentials: body.credentials,
     };
+
+    await prisma.pipeline.create({
+      data: { userId },
+    });
 
     const pipelineId = `pipeline_${randomUUID()}`;
     const pipeline = new Pipeline();

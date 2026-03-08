@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Header } from "./components/header";
 import { useLanguage } from "@/lib/language-context";
+import { useAuth } from "@/lib/auth-context";
 import { triggerConfetti } from "@/lib/confetti";
 
 type InputType = "url";
@@ -78,8 +79,15 @@ function toExportsServePath(filePath: string): string {
   return `/api/exports?file=${encodeURIComponent(rel)}`;
 }
 
+function authHeaders(token: string | null): HeadersInit {
+  const h: HeadersInit = { "Content-Type": "application/json" };
+  if (token) (h as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  return h;
+}
+
 export default function Home() {
   const { language, isHe } = useLanguage();
+  const { token } = useAuth();
 
   const inputType: InputType = "url";
   const [inputValue, setInputValue] = useState("");
@@ -117,7 +125,9 @@ export default function Home() {
     stopPolling();
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/pipeline?id=${id}`);
+        const res = await fetch(`/api/pipeline?id=${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         if (!res.ok) {
           stopPolling();
           setIsRunning(false);
@@ -139,7 +149,7 @@ export default function Home() {
         isRunningRef.current = false;
       }
     }, 1500);
-  }, [stopPolling]);
+  }, [stopPolling, token]);
 
   // Validate input on change
   const validateInput = useCallback((value: string, type: InputType) => {
@@ -172,7 +182,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/pipeline", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(token),
         body: JSON.stringify({
           type: inputType,
           value: inputValue.trim(),
@@ -213,7 +223,10 @@ export default function Home() {
     isRunningRef.current = false;
     // Signal server to cancel
     if (pipelineId) {
-      fetch(`/api/pipeline?id=${pipelineId}`, { method: "DELETE" }).catch(() => {});
+      fetch(`/api/pipeline?id=${pipelineId}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      }).catch(() => {});
     }
     setStatus(prev => prev ? { ...prev, stage: "error", message: isHe ? "\u05D1\u05D5\u05D8\u05DC \u05E2\u05DC \u05D9\u05D3\u05D9 \u05D4\u05DE\u05E9\u05EA\u05DE\u05E9" : "Cancelled by user" } : null);
   };
@@ -232,6 +245,76 @@ export default function Home() {
 
       <main className="flex-1 px-4 py-8">
         <div className="max-w-5xl mx-auto space-y-8">
+          {/* Hero */}
+          <section className="text-center py-6 md:py-10">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight max-w-3xl mx-auto mb-4">
+              {isHe
+                ? "הפוך כל אתר להדרכת וידאו ב־60 שניות"
+                : "Turn Any Website Into a Video Tutorial in 60 Seconds"}
+            </h2>
+            <p className="text-white/70 text-lg max-w-2xl mx-auto mb-6">
+              {isHe
+                ? "סרוק אתר, קבל סרטוני הסבר ו־PDF אוטומטית. ללא עריכה ידנית."
+                : "Scan any site, get explainer videos and PDFs automatically. No manual editing."}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-indigo-600 to-indigo-500 text-white hover:shadow-lg hover:shadow-indigo-500/25 transition"
+              >
+                {isHe ? "נסה חינם" : "Try Free"}
+              </Link>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold bg-white/10 text-white border border-white/20 hover:bg-white/20 transition"
+              >
+                {isHe ? "תמחור" : "Pricing"}
+              </Link>
+            </div>
+          </section>
+
+          {/* Demo: pipeline output (screenshot → video → PDF) */}
+          <section className="glass p-6 md:p-8">
+            <h3 className="text-xl font-bold text-white mb-4 text-center">
+              {isHe ? "איך זה עובד" : "How it works"}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="aspect-video rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-3">
+                  <span className="text-4xl text-white/30">📸</span>
+                </div>
+                <p className="text-sm font-medium text-white">
+                  {isHe ? "צילומי מסך" : "Screenshots"}
+                </p>
+                <p className="text-xs text-white/50 mt-1">
+                  {isHe ? "סריקת דפים אוטומטית" : "Automatic page capture"}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="aspect-video rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-3">
+                  <span className="text-4xl text-white/30">🎬</span>
+                </div>
+                <p className="text-sm font-medium text-white">
+                  {isHe ? "סרטונים" : "Videos"}
+                </p>
+                <p className="text-xs text-white/50 mt-1">
+                  {isHe ? "הסברי וידאו לכל מסך" : "Explainer video per screen"}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="aspect-video rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-3">
+                  <span className="text-4xl text-white/30">📄</span>
+                </div>
+                <p className="text-sm font-medium text-white">
+                  {isHe ? "PDF" : "PDF"}
+                </p>
+                <p className="text-xs text-white/50 mt-1">
+                  {isHe ? "מדריך אחד להורדה" : "Single guide to download"}
+                </p>
+              </div>
+            </div>
+          </section>
+
           {/* Smart Mode Banner */}
           <Link
             href="/editor"
