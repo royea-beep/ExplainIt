@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CaptureEngine } from '@/lib/capture-engine';
-import { validateUrl, clampMaxScreens } from '@/lib/validate-url';
+import { validateUrl, clampMaxScreens } from '@royea/shared-utils/validate-url';
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { Pipeline, type PipelineInput } from '@/lib/pipeline';
-import { validateUrl, validateResolvedIp, clampMaxScreens } from '@/lib/validate-url';
-import { checkRateLimit, getClientIp, PIPELINE_POST_LIMIT, PIPELINE_GET_LIMIT } from '@/lib/rate-limit';
+import { validateUrl, validateResolvedIp, clampMaxScreens } from '@royea/shared-utils/validate-url';
+import { checkRateLimit, getClientIp, HEAVY_LIMIT, API_READ_LIMIT } from '@royea/shared-utils/rate-limit';
 
 const MAX_PIPELINES = 10;
 const PIPELINE_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -47,7 +47,7 @@ setInterval(() => {
 export async function POST(request: NextRequest) {
   // Rate limit
   const ip = getClientIp(request);
-  const limit = checkRateLimit(`pipeline:post:${ip}`, PIPELINE_POST_LIMIT);
+  const limit = checkRateLimit(`pipeline:post:${ip}`, HEAVY_LIMIT);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Too many requests. Try again later.' },
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
-  const limit = checkRateLimit(`pipeline:get:${ip}`, PIPELINE_GET_LIMIT);
+  const limit = checkRateLimit(`pipeline:get:${ip}`, API_READ_LIMIT);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Too many requests' },

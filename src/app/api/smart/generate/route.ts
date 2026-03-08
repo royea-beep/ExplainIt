@@ -6,7 +6,7 @@ import type { ScreenInfo, ElementInfo } from '@/lib/types';
 import { chromium } from 'playwright';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { checkRateLimit, getClientIp, GENERATE_LIMIT } from '@/lib/rate-limit';
+import { checkRateLimit, getClientIp, API_WRITE_LIMIT } from '@royea/shared-utils/rate-limit';
 
 // Validate step ID to prevent path traversal
 function isValidStepId(id: string): boolean {
@@ -39,7 +39,7 @@ function stepToScreenInfo(step: ProjectStep, screenshotPath: string): ScreenInfo
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
-  const limit = checkRateLimit(`generate:${ip}`, GENERATE_LIMIT);
+  const limit = checkRateLimit(`generate:${ip}`, API_WRITE_LIMIT);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Too many requests. Try again later.' },
