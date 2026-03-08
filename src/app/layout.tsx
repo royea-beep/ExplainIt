@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { LanguageProvider } from "@/lib/language-context";
+import { AuthProvider } from "@/lib/auth-context";
+import { EventsQueueProvider } from "@/lib/events-queue-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ProjectLearner } from "@/components/ProjectLearner";
 import { ShareButton } from "@/components/ShareButton";
@@ -27,7 +29,11 @@ export default function RootLayout({
       <body className={`${geistSans.variable} min-h-screen antialiased`}>
         <ErrorBoundary>
           <LanguageProvider>
-            {children}
+            <AuthProvider>
+              <EventsQueueProvider>
+                {children}
+              </EventsQueueProvider>
+            </AuthProvider>
           </LanguageProvider>
         </ErrorBoundary>
         <ProjectLearner />
