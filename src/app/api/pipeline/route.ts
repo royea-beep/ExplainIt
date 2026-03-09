@@ -32,6 +32,7 @@ interface PipelineEntry {
   error?: string;
   cancelled?: boolean;
   createdAt: number;
+  dbId: string;
 }
 
 // Store active pipelines in memory
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
       credentials: body.credentials,
     };
 
-    await prisma.pipeline.create({
+    const dbPipeline = await prisma.pipeline.create({
       data: { userId },
     });
 
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
       if (entry) entry.error = err instanceof Error ? err.message : String(err);
     });
 
-    activePipelines.set(pipelineId, { pipeline, promise, createdAt: Date.now() });
+    activePipelines.set(pipelineId, { pipeline, promise, createdAt: Date.now(), dbId: dbPipeline.id });
 
     return NextResponse.json({ pipelineId, status: pipeline.getStatus() });
   } catch (err) {
@@ -170,6 +171,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const userId = await getUserIdFromRequest(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const ip = getClientIp(request);
   const limit = checkRateLimit(`pipeline:get:${ip}`, API_READ_LIMIT);
   if (!limit.allowed) {
@@ -190,18 +196,26 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Pipeline not found' }, { status: 404 });
   }
 
+  const dbPipeline = await prisma.pipeline.findUnique({
+    where: { id: entry.dbId },
+    select: { userId: true },
+  });
+  if (!dbPipeline || dbPipeline.userId !== userId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const status = entry.pipeline.getStatus();
   const result = entry.result || null;
-
-  // Clean up completed pipelines after result is fetched
-  if (result || entry.error) {
-    // Keep for a few more polls, then clean up on next TTL sweep
-  }
 
   return NextResponse.json({ pipelineId, status, result, error: entry.error || null });
 }
 
 export async function DELETE(request: NextRequest) {
+  const userId = await getUserIdFromRequest(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const pipelineId = request.nextUrl.searchParams.get('id');
 
   if (!pipelineId) {
@@ -211,6 +225,14 @@ export async function DELETE(request: NextRequest) {
   const entry = activePipelines.get(pipelineId);
   if (!entry) {
     return NextResponse.json({ error: 'Pipeline not found' }, { status: 404 });
+  }
+
+  const dbPipeline = await prisma.pipeline.findUnique({
+    where: { id: entry.dbId },
+    select: { userId: true },
+  });
+  if (!dbPipeline || dbPipeline.userId !== userId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   entry.cancelled = true;

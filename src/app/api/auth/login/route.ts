@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     if (err && typeof err === 'object' && 'name' in err && (err as { name: string }).name === 'ZodError') {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
     }
-    console.error('Login error:', err);
+    console.error('Login failed');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

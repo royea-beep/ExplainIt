@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     if (err && typeof err === 'object' && 'name' in err && (err as { name: string }).name === 'ZodError') {
-      return NextResponse.json({ error: 'Invalid input', details: err }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
     }
     console.error('Register error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
