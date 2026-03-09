@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "../components/header";
+import { StyleDNA, type StyleOverrides } from "../components/style-dna";
 import { useLanguage } from "@/lib/language-context";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/AuthModal";
 import { triggerConfetti } from "@/lib/confetti";
 
 interface StepHighlight {
@@ -41,8 +45,18 @@ interface SmartProject {
 
 type Phase = "input" | "questions" | "editor" | "generating" | "done";
 
-export default function EditorPage() {
+export default function EditorPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0a1a]" />}>
+      <EditorPage />
+    </Suspense>
+  );
+}
+
+function EditorPage() {
   const { language, isHe } = useLanguage();
+  const { token } = useAuth();
+  const searchParams = useSearchParams();
   const [phase, setPhase] = useState<Phase>("input");
   const [request, setRequest] = useState("");
   const [project, setProject] = useState<SmartProject | null>(null);
@@ -51,19 +65,102 @@ export default function EditorPage() {
   const [generatingStatus, setGeneratingStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [styleOverrides, setStyleOverrides] = useState<StyleOverrides>({
+    videoTheme: "modern",
+    detailLevel: "standard",
+  });
+
+  const [upgradeRequired, setUpgradeRequired] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [currentRunId, setCurrentRunId] = useState<string | null>(null);
+  const [pendingRetry, setPendingRetry] = useState(false);
+
+  // Draft autosave
+  const DRAFT_KEY = "explainit_editor_draft";
+  const [hasDraft, setHasDraft] = useState(false);
+  const [draftData, setDraftData] = useState<SmartProject | Record<string, unknown> | null>(null);
+
+  // Restore draft check on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.project && parsed.phase) {
+          setHasDraft(true);
+          setDraftData(parsed);
+        }
+      }
+    } catch { /* storage unavailable */ }
+  }, []);
+
+  // Save draft on state changes
+  useEffect(() => {
+    if (phase === "input" || !project) return;
+    try {
+      const draft = { phase, request, project, answers, styleOverrides, currentRunId };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch { /* storage full or unavailable */ }
+  }, [phase, project, answers, request, styleOverrides, currentRunId]);
+
+  // Clear draft on completion
+  useEffect(() => {
+    if (phase === "done") {
+      try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    }
+  }, [phase]);
+
+  const resumeDraft = () => {
+    if (!draftData) return;
+    const d = draftData as Record<string, unknown>;
+    setPhase(d.phase as Phase);
+    setRequest((d.request as string) || "");
+    setProject(d.project as SmartProject);
+    setAnswers((d.answers as Record<string, string>) || {});
+    if (d.styleOverrides) setStyleOverrides(d.styleOverrides as StyleOverrides);
+    if (d.currentRunId) setCurrentRunId(d.currentRunId as string);
+    setHasDraft(false);
+    setDraftData(null);
+  };
+
+  const discardDraft = () => {
+    setHasDraft(false);
+    setDraftData(null);
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  };
+
+  // Pre-fill platform from URL query param (e.g. ?platform=clubgg)
+  useEffect(() => {
+    const platform = searchParams.get("platform");
+    if (platform && phase === "input" && !request) {
+      setRequest(platform);
+    }
+  }, [searchParams, phase, request]);
 
   const submitRequest = useCallback(async (req: string, ans: Record<string, string>) => {
     setIsSubmitting(true);
     setError(null);
+    setUpgradeRequired(false);
     try {
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch("/api/smart", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ request: req, answers: ans, language }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (data.authRequired) {
+          setAuthOpen(true);
+          throw new Error(isHe ? "התחבר כדי לנסות Smart Mode בחינם" : "Sign in to try Smart Mode for free");
+        }
+        if (data.upgradeRequired) {
+          setUpgradeRequired(true);
+          throw new Error(data.error || (isHe ? "Smart Mode זמין למנויי PRO ומעלה" : "Smart Mode requires a PRO or TEAM plan."));
+        }
         throw new Error(data.error || `Server error (${res.status})`);
       }
 
@@ -80,7 +177,15 @@ export default function EditorPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [language]);
+  }, [language, token, isHe]);
+
+  // Auto-retry after successful auth — waits for token to be available
+  useEffect(() => {
+    if (pendingRetry && token && request.trim()) {
+      setPendingRetry(false);
+      submitRequest(request, answers);
+    }
+  }, [pendingRetry, token, request, answers, submitRequest]);
 
   const handleInitialSubmit = () => {
     if (!request.trim() || isSubmitting) return;
@@ -176,20 +281,41 @@ export default function EditorPage() {
     try {
       setGeneratingStatus(isHe ? "...\u05DE\u05D9\u05D9\u05E6\u05E8 \u05E1\u05E8\u05D8\u05D5\u05E0\u05D9 \u05D4\u05E1\u05D1\u05E8" : "Generating explainer videos...");
 
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch("/api/smart/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project }),
+        headers,
+        body: JSON.stringify({
+          project,
+          videoTheme: styleOverrides.videoTheme,
+          detailLevel: styleOverrides.detailLevel,
+          existingRunId: currentRunId || undefined,
+        }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (data.authRequired) {
+          setAuthOpen(true);
+          throw new Error(isHe ? "התחבר כדי לייצר" : "Sign in to generate");
+        }
+        if (data.upgradeRequired) {
+          setUpgradeRequired(true);
+          throw new Error(data.error || (isHe ? "נדרש שדרוג" : "Upgrade required"));
+        }
         throw new Error(data.error || `Server error (${res.status})`);
       }
 
       const result = await res.json();
       if (result.error) {
         throw new Error(result.error);
+      }
+
+      // Track the runId so re-generations reuse the same export
+      if (result.runId) {
+        setCurrentRunId(result.runId);
       }
 
       setGeneratingStatus(isHe ? "!\u05D4\u05D5\u05E9\u05DC\u05DD" : "Complete!");
@@ -211,8 +337,46 @@ export default function EditorPage() {
       <main className="flex-1 px-4 py-6">
         <div className="max-w-5xl mx-auto space-y-6">
 
+          {/* Upgrade Banner */}
+          {upgradeRequired && (
+            <div className="p-5 bg-gradient-to-r from-indigo-500/10 to-amber-500/10 border border-indigo-500/30 rounded-xl" role="alert">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zm7-10a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732L14.146 12.8l-1.179 4.456a1 1 0 01-1.934 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732L9.854 7.2l1.179-4.456A1 1 0 0112 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-white font-semibold">
+                  {isHe ? "Smart Mode — למנויים בלבד" : "Smart Mode — PRO Feature"}
+                </h3>
+              </div>
+              <p className="text-white/60 text-sm mb-3">
+                {isHe
+                  ? "Smart Mode זמין למנויי PRO ו-TEAM. שדרג כדי ליצור הסברים מותאמים אישית עם בינה מלאכותית."
+                  : "Smart Mode is available on PRO and TEAM plans. Upgrade to create AI-powered custom explainers."}
+              </p>
+              <div className="flex gap-3 flex-wrap">
+                {!token && (
+                  <button
+                    type="button"
+                    onClick={() => setAuthOpen(true)}
+                    className="bg-white/10 text-white font-semibold text-sm px-5 py-2.5 rounded-lg hover:bg-white/20 transition-all"
+                  >
+                    {isHe ? "התחבר" : "Sign In"}
+                  </button>
+                )}
+                <Link
+                  href="/pricing"
+                  className="inline-block bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-semibold text-sm px-5 py-2.5 rounded-lg hover:shadow-lg hover:shadow-indigo-500/25 transition-all"
+                >
+                  {isHe ? "צפה בתוכניות" : "View Plans"}
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Error Banner */}
-          {error && (
+          {error && !upgradeRequired && (
             <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start justify-between gap-3" role="alert">
               <p className="text-red-400 text-sm">{error}</p>
               <button
@@ -225,6 +389,29 @@ export default function EditorPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+            </div>
+          )}
+
+          {/* Draft Resume Banner */}
+          {hasDraft && phase === "input" && (
+            <div className="glass p-4 flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+              <p className="text-white/70 text-sm">
+                {isHe ? "יש לך טיוטה שלא הושלמה. להמשיך?" : "You have an unfinished draft. Continue?"}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={resumeDraft}
+                  className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-500 transition"
+                >
+                  {isHe ? "המשך" : "Resume"}
+                </button>
+                <button
+                  onClick={discardDraft}
+                  className="px-4 py-2 bg-white/10 text-white/60 text-sm rounded-lg hover:bg-white/20 transition"
+                >
+                  {isHe ? "מחק" : "Discard"}
+                </button>
+              </div>
             </div>
           )}
 
@@ -417,12 +604,14 @@ export default function EditorPage() {
                           {step.order}
                         </div>
                         {step.mockupHtml && (
-                          <iframe
-                            srcDoc={step.mockupHtml}
-                            sandbox="allow-same-origin"
-                            className="w-[160px] h-[300px] border-0 rounded-lg pointer-events-none"
-                            title={`${step.title} mockup`}
-                          />
+                          <div className="hidden md:block">
+                            <iframe
+                              srcDoc={step.mockupHtml}
+                              sandbox="allow-same-origin"
+                              className="w-[160px] h-[300px] border-0 rounded-lg pointer-events-none"
+                              title={`${step.title} mockup`}
+                            />
+                          </div>
                         )}
                       </div>
 
@@ -434,7 +623,7 @@ export default function EditorPage() {
                               type="text"
                               value={step.title}
                               onChange={(e) => updateStep(step.id, "title", e.target.value)}
-                              className="flex-1 bg-white/5 border border-indigo-500/50 rounded-lg px-3 py-2 text-white font-bold text-lg focus:outline-none focus:border-indigo-500"
+                              className="flex-1 bg-white/5 border border-indigo-500/50 rounded-lg px-3 py-2 text-white font-bold text-base sm:text-lg focus:outline-none focus:border-indigo-500"
                               dir={isHe ? "rtl" : "ltr"}
                               autoFocus
                             />
@@ -447,7 +636,7 @@ export default function EditorPage() {
                               type="button"
                               onClick={() => moveStep(step.id, "up")}
                               disabled={idx === 0}
-                              className="p-1.5 rounded-md text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 transition"
+                              className="p-2.5 rounded-md text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 transition"
                               aria-label={isHe ? "\u05D4\u05E2\u05DC\u05D4 \u05DC\u05DE\u05E2\u05DC\u05D4" : "Move up"}
                             >
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
@@ -456,7 +645,7 @@ export default function EditorPage() {
                               type="button"
                               onClick={() => moveStep(step.id, "down")}
                               disabled={idx === project.steps.length - 1}
-                              className="p-1.5 rounded-md text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 transition"
+                              className="p-2.5 rounded-md text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 transition"
                               aria-label={isHe ? "\u05D4\u05D5\u05E8\u05D3 \u05DC\u05DE\u05D8\u05D4" : "Move down"}
                             >
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -464,7 +653,7 @@ export default function EditorPage() {
                             <button
                               type="button"
                               onClick={() => setEditingStep(editingStep === step.id ? null : step.id)}
-                              className={`p-1.5 rounded-md transition ${editingStep === step.id ? "text-indigo-400 bg-indigo-500/10" : "text-white/30 hover:text-white hover:bg-white/10"}`}
+                              className={`p-2.5 rounded-md transition ${editingStep === step.id ? "text-indigo-400 bg-indigo-500/10" : "text-white/30 hover:text-white hover:bg-white/10"}`}
                               aria-label={isHe ? "\u05E2\u05E8\u05D5\u05DA" : "Edit"}
                             >
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -472,7 +661,7 @@ export default function EditorPage() {
                             <button
                               type="button"
                               onClick={() => removeStep(step.id)}
-                              className="p-1.5 rounded-md text-white/30 hover:text-red-400 hover:bg-red-500/10 transition"
+                              className="p-2.5 rounded-md text-white/30 hover:text-red-400 hover:bg-red-500/10 transition"
                               aria-label={isHe ? "\u05DE\u05D7\u05E7 \u05E9\u05DC\u05D1" : "Delete step"}
                             >
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -487,7 +676,7 @@ export default function EditorPage() {
                               <textarea
                                 value={step.description}
                                 onChange={(e) => updateStep(step.id, "description", e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 text-sm focus:outline-none focus:border-indigo-500 resize-none h-20"
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 text-base focus:outline-none focus:border-indigo-500 resize-none h-20"
                                 dir={isHe ? "rtl" : "ltr"}
                               />
                             </div>
@@ -497,14 +686,14 @@ export default function EditorPage() {
                                 type="text"
                                 value={step.actionLabel}
                                 onChange={(e) => updateStep(step.id, "actionLabel", e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 text-sm focus:outline-none focus:border-indigo-500"
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 text-base focus:outline-none focus:border-indigo-500"
                                 dir={isHe ? "rtl" : "ltr"}
                               />
                             </div>
                             <button
                               type="button"
                               onClick={() => setEditingStep(null)}
-                              className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg"
+                              className="text-sm bg-indigo-600 text-white px-4 py-2.5 rounded-lg"
                             >
                               {isHe ? "\u05E1\u05D9\u05D5\u05DD \u05E2\u05E8\u05D9\u05DB\u05D4" : "Done Editing"}
                             </button>
@@ -534,21 +723,29 @@ export default function EditorPage() {
                 ))}
               </div>
 
-              {/* Bottom generate bar */}
-              <div className="glass p-4 flex items-center justify-between sticky bottom-4">
-                <p className="text-sm text-white/50">
-                  {project.steps.length} {isHe ? "\u05E9\u05DC\u05D1\u05D9\u05DD \u05DE\u05D5\u05DB\u05E0\u05D9\u05DD" : "steps ready"}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleGenerate}
-                  className="bg-gradient-to-r from-indigo-600 to-amber-500 text-white font-bold px-8 py-3 rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all active:scale-[0.98] flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                  </svg>
-                  {isHe ? "\u05D9\u05D9\u05E6\u05E8 \u05D4\u05DB\u05DC" : "Generate All"}
-                </button>
+              {/* Style DNA + Bottom generate bar */}
+              <div className="glass p-4 space-y-4 sticky bottom-4" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+                <div className="border-b border-white/5 pb-3">
+                  <StyleDNA
+                    overrides={styleOverrides}
+                    onChange={setStyleOverrides}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-white/50">
+                    {project.steps.length} {isHe ? "\u05E9\u05DC\u05D1\u05D9\u05DD \u05DE\u05D5\u05DB\u05E0\u05D9\u05DD" : "steps ready"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="bg-gradient-to-r from-indigo-600 to-amber-500 text-white font-bold px-8 py-3 rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all active:scale-[0.98] flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                    </svg>
+                    {isHe ? "\u05D9\u05D9\u05E6\u05E8 \u05D4\u05DB\u05DC" : "Generate All"}
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -596,7 +793,7 @@ export default function EditorPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setPhase("input"); setProject(null); setRequest(""); setAnswers({}); setError(null); }}
+                  onClick={() => { setPhase("input"); setProject(null); setRequest(""); setAnswers({}); setError(null); setCurrentRunId(null); setUpgradeRequired(false); }}
                   className="bg-white/5 hover:bg-white/10 text-white/70 hover:text-white px-6 py-3 rounded-xl transition"
                 >
                   {isHe ? "\u05E4\u05E8\u05D5\u05D9\u05E7\u05D8 \u05D7\u05D3\u05E9" : "New Project"}
@@ -613,6 +810,17 @@ export default function EditorPage() {
           ExplainIt v1.0
         </div>
       </footer>
+
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        reason={isHe ? "התחבר כדי להשתמש ב-Smart Mode" : "Sign in to use Smart Mode"}
+        onSuccess={() => {
+          setError(null);
+          setUpgradeRequired(false);
+          setPendingRetry(true);
+        }}
+      />
     </div>
   );
 }

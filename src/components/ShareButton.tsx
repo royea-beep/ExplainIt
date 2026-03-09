@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-const SITE_URL = 'https://explainit-one.vercel.app';
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://explainit-one.vercel.app';
 const SHARE_MESSAGE = 'Check out ExplainIt — auto-generate video tutorials for any website!';
 
 function buildUrl(platform: string) {
@@ -74,7 +74,7 @@ export function ShareButton() {
   };
 
   return (
-    <div ref={ref} className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3">
+    <div ref={ref} className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3" style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))' }}>
       {/* Expanded panel */}
       {open && (
         <div className="flex flex-col gap-2 p-3 rounded-2xl border border-white/10 bg-[#0a0a0f]/95 backdrop-blur-xl shadow-2xl animate-fade-in">

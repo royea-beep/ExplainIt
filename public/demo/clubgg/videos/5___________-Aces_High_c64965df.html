@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>5. הצטרפות ל-Aces High - ExplainIt Video</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    margin: 0; padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0d0d1a;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+
+  .viewport-scaler {
+    width: 1080px;
+    height: 1920px;
+    transform-origin: top left;
+    transform: scale(min(calc(100vw / 1080), calc(100vh / 1920)));
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Screenshot layer */
+  .screenshot {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1080px;
+    height: 1920px;
+    object-fit: contain;
+    z-index: 1;
+    animation: zoomPan 20s ease-in-out forwards;
+  }
+
+  @keyframes zoomPan {
+    0%   { transform: scale(1) translate(0, 0); }
+    30%  { transform: scale(1.05) translate(-10px, -10px); }
+    60%  { transform: scale(1.08) translate(5px, -15px); }
+    100% { transform: scale(1) translate(0, 0); }
+  }
+
+  /* Highlights */
+  .highlight {
+    position: absolute;
+    z-index: 10;
+    border: 3px solid;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  /* Callouts */
+  .callout {
+    position: absolute;
+    z-index: 11;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  /* Simulated cursor */
+  .cursor {
+    position: absolute;
+    z-index: 20;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.85);
+    border: 2px solid #333;
+    pointer-events: none;
+    animation: cursorMove 20s ease-in-out forwards;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Title overlay */
+  .title-overlay {
+    position: absolute;
+    z-index: 30;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 13, 26, 0.88);
+    animation: titleFade 20s ease-in-out forwards;
+  }
+
+  @keyframes titleFade {
+    0%   { opacity: 1; }
+    8% { opacity: 1; }
+    10% { opacity: 0; pointer-events: none; }
+    100% { opacity: 0; pointer-events: none; }
+  }
+
+  .title-overlay h1 {
+    font-size: 42px;
+    color: #ffffff;
+    margin-bottom: 16px;
+    text-align: center;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  }
+
+  .title-overlay p {
+    font-size: 20px;
+    color: #cccccc;
+    max-width: 80%;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  /* CTA overlay */
+  .cta-overlay {
+    position: absolute;
+    z-index: 30;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 13, 26, 0.88);
+    opacity: 0;
+    animation: ctaFade 20s ease-in-out forwards;
+  }
+
+  @keyframes ctaFade {
+    0%, 89% { opacity: 0; }
+    91% { opacity: 1; }
+    100% { opacity: 1; }
+  }
+
+  .cta-overlay .cta-button {
+    padding: 18px 48px;
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+    background: linear-gradient(135deg, #ff4444, #ff8800);
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px #ff444466;
+    cursor: pointer;
+    animation: ctaPulse 1.2s ease-in-out infinite alternate;
+  }
+
+  @keyframes ctaPulse {
+    from { transform: scale(1); }
+    to   { transform: scale(1.06); }
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    position: absolute;
+    z-index: 40;
+    bottom: 0; left: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #ff4444, #ff8800, #ffcc00);
+    animation: progress 20s linear forwards;
+  }
+
+  @keyframes progress {
+    from { width: 0%; }
+    to   { width: 100%; }
+  }
+
+  
+    @keyframes highlight-0 {
+      0%, 9% { opacity: 0; transform: scale(0.8); }
+      10% { opacity: 1; transform: scale(1.05); }
+      12% { opacity: 1; transform: scale(1); }
+      49% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0; transform: scale(0.9); }
+      100% { opacity: 0; }
+    }
+    @keyframes callout-0 {
+      0%, 11% { opacity: 0; transform: translateY(8px); }
+      13% { opacity: 1; transform: translateY(0); }
+      48% { opacity: 1; transform: translateY(0); }
+      50% { opacity: 0; transform: translateY(-8px); }
+      100% { opacity: 0; }
+    }
+    @keyframes highlight-1 {
+      0%, 49% { opacity: 0; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.05); }
+      52% { opacity: 1; transform: scale(1); }
+      89% { opacity: 1; transform: scale(1); }
+      90% { opacity: 0; transform: scale(0.9); }
+      100% { opacity: 0; }
+    }
+    @keyframes callout-1 {
+      0%, 51% { opacity: 0; transform: translateY(8px); }
+      53% { opacity: 1; transform: translateY(0); }
+      88% { opacity: 1; transform: translateY(0); }
+      90% { opacity: 0; transform: translateY(-8px); }
+      100% { opacity: 0; }
+    }
+  @keyframes cursorMove {
+  10% { left: 180px; top: 259px; opacity: 1; }
+  30% { left: 180px; top: 259px; opacity: 1; }
+  50% { left: 261px; top: 266.5px; opacity: 1; }
+  70% { left: 261px; top: 266.5px; opacity: 1; }
+  0% { opacity: 0; left: 540px; top: 960px; }
+  10% { opacity: 1; left: 540px; top: 960px; }
+  90% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+  
+</style>
+</head>
+<body>
+
+  <div class="viewport-scaler">
+
+  <!-- Screenshot background -->
+  <img class="screenshot" src="step_5_ae34qyn4.png" alt="screenshot"/>
+
+  <!-- Title slide -->
+  <div class="title-overlay">
+    <h1>5. הצטרפות ל-Aces High</h1>
+    <p>המועדון &quot;Aces High&quot; יופיע בתוצאות. לחצו &quot;Join&quot; / הצטרף כדי להיכנס.</p>
+  </div>
+
+  <!-- Element highlights & callouts -->
+  
+    <div class="highlight" style="
+      left:36px; top:216px; width:288px; height:86px;
+      border-color:#ff4444;
+      box-shadow: 0 0 12px #ff444488;
+      animation: highlight-0 20s ease-in-out forwards;
+    "></div>
+    <div class="callout" style="
+      left:36px; top:178px;
+      background:#ff4444;
+      animation: callout-0 20s ease-in-out forwards;
+    ">Aces High</div>
+    <div class="highlight" style="
+      left:216px; top:245px; width:90px; height:43px;
+      border-color:#ff8800;
+      box-shadow: 0 0 12px #ff880088;
+      animation: highlight-1 20s ease-in-out forwards;
+    "></div>
+    <div class="callout" style="
+      left:216px; top:207px;
+      background:#ff8800;
+      animation: callout-1 20s ease-in-out forwards;
+    ">הצטרף</div>
+
+  <!-- Cursor simulation -->
+  <div class="cursor"></div>
+
+  <!-- CTA -->
+  <div class="cta-overlay">
+    <button class="cta-button">למידע נוסף</button>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-bar"></div>
+
+  
+
+  </div>
+
+</body>
+</html>

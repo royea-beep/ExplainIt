@@ -1,0 +1,39 @@
+{
+  "projectName": "Aces High - ClubGG",
+  "generatedAt": "2026-03-09T19:54:12.432Z",
+  "platform": "ClubGG",
+  "clubId": "827364",
+  "clubName": "Aces High",
+  "language": "he",
+  "usedPlaywright": true,
+  "totalScreens": 6,
+  "totalVideos": 7,
+  "pdfPath": "C:\\Projects\\ExplainIt\\public\\demo\\clubgg\\docs\\Aces_High_-_ClubGG_2026-03-09T19-54-12.pdf",
+  "demoPagePath": "C:\\Projects\\ExplainIt\\public\\demo\\clubgg\\videos\\index.html",
+  "steps": [
+    {
+      "order": 1,
+      "title": "הורדת האפליקציה"
+    },
+    {
+      "order": 2,
+      "title": "יצירת חשבון"
+    },
+    {
+      "order": 3,
+      "title": "מציאת המועדון"
+    },
+    {
+      "order": 4,
+      "title": "הזנת קוד המועדון"
+    },
+    {
+      "order": 5,
+      "title": "הצטרפות ל-Aces High"
+    },
+    {
+      "order": 6,
+      "title": "סיימתם! אתם בפנים"
+    }
+  ]
+}

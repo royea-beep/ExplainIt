@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Aces High - ClubGG - Overview - ExplainIt</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    margin: 0; padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0d0d1a;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+
+  .viewport-scaler {
+    width: 1080px;
+    height: 1920px;
+    transform-origin: top left;
+    transform: scale(min(calc(100vw / 1080), calc(100vh / 1920)));
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Title */
+  .title-overlay {
+    position: absolute; z-index: 30;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    background: rgba(13, 13, 26, 0.88);
+    animation: titleFade 28s ease-in-out forwards;
+  }
+  @keyframes titleFade {
+    0% { opacity: 1; }
+    6.142857142857142% { opacity: 1; }
+    7.142857142857142% { opacity: 0; pointer-events: none; }
+    100% { opacity: 0; pointer-events: none; }
+  }
+  .title-overlay h1 { font-size: 48px; color: #ffffff; margin-bottom: 12px; text-align: center; }
+  .title-overlay p { font-size: 22px; color: #cccccc; text-align: center; }
+
+  /* Screen slides */
+  .screen-slide {
+    position: absolute; z-index: 5;
+    top: 5%; left: 5%; width: 90%; height: 75%;
+    opacity: 0;
+  }
+  .screen-slide img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+
+  .screen-label {
+    position: absolute; z-index: 10;
+    bottom: 8%; left: 0; width: 100%;
+    text-align: center;
+    font-size: 28px; font-weight: 700; color: #fff;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+    opacity: 0;
+  }
+
+  /* CTA */
+  .cta-overlay {
+    position: absolute; z-index: 30;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(13, 13, 26, 0.88);
+    opacity: 0;
+    animation: ctaFade 28s ease-in-out forwards;
+  }
+  @keyframes ctaFade {
+    0%, 91.85714285714286% { opacity: 0; }
+    93.85714285714286% { opacity: 1; }
+    100% { opacity: 1; }
+  }
+  .cta-overlay .cta-button {
+    padding: 18px 48px; font-size: 28px; font-weight: 700;
+    color: #ffffff; background: linear-gradient(135deg, #ff4444, #ff8800);
+    border: none; border-radius: 12px;
+    box-shadow: 0 4px 24px #ff444466;
+    animation: ctaPulse 1.2s ease-in-out infinite alternate;
+  }
+  @keyframes ctaPulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+
+  .progress-bar {
+    position: absolute; z-index: 40; bottom: 0; left: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #ff4444, #ff8800, #ffcc00);
+    animation: progress 28s linear forwards;
+  }
+  @keyframes progress { from { width: 0%; } to { width: 100%; } }
+
+  
+    @keyframes slide-0 {
+      0%, 6.142857142857142% { opacity: 0; transform: scale(0.92) translateY(20px); }
+      8.142857142857142% { opacity: 1; transform: scale(1) translateY(0); }
+      19.428571428571427% { opacity: 1; transform: scale(1) translateY(0); }
+      21.428571428571427% { opacity: 0; transform: scale(1.04) translateY(-20px); }
+      100% { opacity: 0; }
+    }
+    @keyframes label-0 {
+      0%, 9.142857142857142% { opacity: 0; }
+      11.142857142857142% { opacity: 1; }
+      18.428571428571427% { opacity: 1; }
+      21.428571428571427% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+    @keyframes slide-1 {
+      0%, 20.428571428571427% { opacity: 0; transform: scale(0.92) translateY(20px); }
+      22.428571428571427% { opacity: 1; transform: scale(1) translateY(0); }
+      33.714285714285715% { opacity: 1; transform: scale(1) translateY(0); }
+      35.714285714285715% { opacity: 0; transform: scale(1.04) translateY(-20px); }
+      100% { opacity: 0; }
+    }
+    @keyframes label-1 {
+      0%, 23.428571428571427% { opacity: 0; }
+      25.428571428571427% { opacity: 1; }
+      32.714285714285715% { opacity: 1; }
+      35.714285714285715% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+    @keyframes slide-2 {
+      0%, 34.714285714285715% { opacity: 0; transform: scale(0.92) translateY(20px); }
+      36.714285714285715% { opacity: 1; transform: scale(1) translateY(0); }
+      48% { opacity: 1; transform: scale(1) translateY(0); }
+      50% { opacity: 0; transform: scale(1.04) translateY(-20px); }
+      100% { opacity: 0; }
+    }
+    @keyframes label-2 {
+      0%, 37.714285714285715% { opacity: 0; }
+      39.714285714285715% { opacity: 1; }
+      47% { opacity: 1; }
+      50% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+    @keyframes slide-3 {
+      0%, 49% { opacity: 0; transform: scale(0.92) translateY(20px); }
+      51% { opacity: 1; transform: scale(1) translateY(0); }
+      62.28571428571429% { opacity: 1; transform: scale(1) translateY(0); }
+      64.28571428571429% { opacity: 0; transform: scale(1.04) translateY(-20px); }
+      100% { opacity: 0; }
+    }
+    @keyframes label-3 {
+      0%, 52% { opacity: 0; }
+      54% { opacity: 1; }
+      61.28571428571429% { opacity: 1; }
+      64.28571428571429% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+    @keyframes slide-4 {
+      0%, 63.28571428571429% { opacity: 0; transform: scale(0.92) translateY(20px); }
+      65.28571428571429% { opacity: 1; transform: scale(1) translateY(0); }
+      76.57142857142857% { opacity: 1; transform: scale(1) translateY(0); }
+      78.57142857142857% { opacity: 0; transform: scale(1.04) translateY(-20px); }
+      100% { opacity: 0; }
+    }
+    @keyframes label-4 {
+      0%, 66.28571428571429% { opacity: 0; }
+      68.28571428571429% { opacity: 1; }
+      75.57142857142857% { opacity: 1; }
+      78.57142857142857% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+    @keyframes slide-5 {
+      0%, 77.57142857142857% { opacity: 0; transform: scale(0.92) translateY(20px); }
+      79.57142857142857% { opacity: 1; transform: scale(1) translateY(0); }
+      90.85714285714286% { opacity: 1; transform: scale(1) translateY(0); }
+      92.85714285714286% { opacity: 0; transform: scale(1.04) translateY(-20px); }
+      100% { opacity: 0; }
+    }
+    @keyframes label-5 {
+      0%, 80.57142857142857% { opacity: 0; }
+      82.57142857142857% { opacity: 1; }
+      89.85714285714286% { opacity: 1; }
+      92.85714285714286% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+  
+</style>
+</head>
+<body>
+
+  <div class="viewport-scaler">
+
+  <div class="title-overlay">
+    <h1>Aces High - ClubGG</h1>
+    <p>סקירת מסכים</p>
+  </div>
+
+  
+    <div class="screen-slide" style="animation: slide-0 28s ease-in-out forwards;">
+      <img src="step_1_ya4leyew.png" alt="1. הורדת האפליקציה"/>
+    </div>
+    <div class="screen-label" style="animation: label-0 28s ease-in-out forwards;">
+      1. הורדת האפליקציה
+    </div>
+    <div class="screen-slide" style="animation: slide-1 28s ease-in-out forwards;">
+      <img src="step_2_zrre6dxy.png" alt="2. יצירת חשבון"/>
+    </div>
+    <div class="screen-label" style="animation: label-1 28s ease-in-out forwards;">
+      2. יצירת חשבון
+    </div>
+    <div class="screen-slide" style="animation: slide-2 28s ease-in-out forwards;">
+      <img src="step_3_vn1yknj7.png" alt="3. מציאת המועדון"/>
+    </div>
+    <div class="screen-label" style="animation: label-2 28s ease-in-out forwards;">
+      3. מציאת המועדון
+    </div>
+    <div class="screen-slide" style="animation: slide-3 28s ease-in-out forwards;">
+      <img src="step_4_0m54l55g.png" alt="4. הזנת קוד המועדון"/>
+    </div>
+    <div class="screen-label" style="animation: label-3 28s ease-in-out forwards;">
+      4. הזנת קוד המועדון
+    </div>
+    <div class="screen-slide" style="animation: slide-4 28s ease-in-out forwards;">
+      <img src="step_5_ae34qyn4.png" alt="5. הצטרפות ל-Aces High"/>
+    </div>
+    <div class="screen-label" style="animation: label-4 28s ease-in-out forwards;">
+      5. הצטרפות ל-Aces High
+    </div>
+    <div class="screen-slide" style="animation: slide-5 28s ease-in-out forwards;">
+      <img src="step_6_3d4bbc3l.png" alt="6. סיימתם! אתם בפנים"/>
+    </div>
+    <div class="screen-label" style="animation: label-5 28s ease-in-out forwards;">
+      6. סיימתם! אתם בפנים
+    </div>
+
+  <div class="cta-overlay">
+    <button class="cta-button">גלה עוד</button>
+  </div>
+
+  <div class="progress-bar"></div>
+
+  
+
+  </div>
+
+</body>
+</html>

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Header } from "./components/header";
+import { StyleDNA, type StyleOverrides, type StyleProfile } from "./components/style-dna";
 import { useLanguage } from "@/lib/language-context";
 import { useAuth } from "@/lib/auth-context";
 import { triggerConfetti } from "@/lib/confetti";
@@ -97,12 +98,30 @@ export default function Home() {
   const [useCredentials, setUseCredentials] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [styleOverrides, setStyleOverrides] = useState<StyleOverrides>({
+    videoTheme: "modern",
+    detailLevel: "standard",
+  });
 
   const [status, setStatus] = useState<PipelineStatus | null>(null);
   const [result, setResult] = useState<PipelineResultData | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [inputError, setInputError] = useState<string | null>(null);
   const [pipelineId, setPipelineId] = useState<string | null>(null);
+
+  // Apply learned defaults from Style DNA when profile loads
+  const handleDefaultsLoaded = useCallback((profile: StyleProfile) => {
+    setStyleOverrides({
+      videoTheme: profile.videoTheme,
+      detailLevel: profile.detailLevel,
+    });
+    if (profile.preferredOrientation === "portrait" || profile.preferredOrientation === "landscape") {
+      setOrientation(profile.preferredOrientation);
+    }
+    if (profile.preferredMaxScreens && profile.preferredMaxScreens >= 1 && profile.preferredMaxScreens <= 30) {
+      setMaxScreens(profile.preferredMaxScreens);
+    }
+  }, []);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isRunningRef = useRef(false);
@@ -191,6 +210,8 @@ export default function Home() {
           maxScreens,
           language,
           credentials: useCredentials ? { username, password } : undefined,
+          videoTheme: styleOverrides.videoTheme,
+          detailLevel: styleOverrides.detailLevel,
         }),
       });
 
@@ -360,7 +381,7 @@ export default function Home() {
                   value={inputValue}
                   onChange={(e) => { setInputValue(e.target.value); validateInput(e.target.value, inputType); }}
                   placeholder="https://example.com"
-                  className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-1 transition-all text-start ${
+                  className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-base text-white placeholder-white/30 focus:outline-none focus:ring-1 transition-all text-start ${
                     inputError
                       ? "border-red-500/60 focus:border-red-500 focus:ring-red-500"
                       : "border-white/10 focus:border-indigo-500 focus:ring-indigo-500"
@@ -385,7 +406,7 @@ export default function Home() {
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
                     placeholder={isHe ? "\u05E9\u05DD \u05D4\u05E4\u05E8\u05D5\u05D9\u05E7\u05D8" : "Project name"}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-all"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-all"
                   />
                 </div>
 
@@ -395,7 +416,7 @@ export default function Home() {
                     id="orientation"
                     value={orientation}
                     onChange={(e) => setOrientation(e.target.value as Orientation)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-all [&>option]:bg-[#0a0a0f]"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base text-white focus:outline-none focus:border-indigo-500 transition-all [&>option]:bg-[#0a0a0f]"
                   >
                     <option value="portrait">
                       {isHe ? "\u05D0\u05E0\u05DB\u05D9 (\u05D8\u05DC\u05E4\u05D5\u05DF)" : "Portrait (Phone)"}
@@ -417,19 +438,19 @@ export default function Home() {
                     max={30}
                     value={maxScreens}
                     onChange={(e) => setMaxScreens(Math.min(30, Math.max(1, Number(e.target.value))))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-all"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base text-white focus:outline-none focus:border-indigo-500 transition-all"
                   />
                 </div>
               </div>
 
               {/* Credentials Toggle */}
               <div>
-                <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer min-h-[44px]">
                   <input
                     type="checkbox"
                     checked={useCredentials}
                     onChange={(e) => setUseCredentials(e.target.checked)}
-                    className="rounded"
+                    className="rounded w-5 h-5"
                   />
                   {isHe ? "?\u05E6\u05E8\u05D9\u05DA Login" : "Requires Login?"}
                 </label>
@@ -443,7 +464,7 @@ export default function Home() {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         placeholder="Username"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-all"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-all"
                         dir="ltr"
                         autoComplete="username"
                       />
@@ -456,7 +477,7 @@ export default function Home() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Password"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-all"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-all"
                         dir="ltr"
                         autoComplete="current-password"
                       />
@@ -464,6 +485,15 @@ export default function Home() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Style DNA Panel */}
+            <div className="border-t border-white/5 pt-4">
+              <StyleDNA
+                overrides={styleOverrides}
+                onChange={setStyleOverrides}
+                onDefaultsLoaded={handleDefaultsLoaded}
+              />
             </div>
 
             {/* Start Button */}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="270" height="480">
+  <rect width="100%" height="100%" fill="#1a1a2e"/>
+  <image href="step_1_ya4leyew.png" x="0" y="0" width="270" height="480" opacity="0.6" preserveAspectRatio="xMidYMid slice"/>
+  <rect x="0" y="430" width="270" height="50" fill="rgba(0,0,0,0.7)"/>
+  <text x="135" y="460" font-family="Arial, sans-serif" font-size="16" fill="white" text-anchor="middle">Aces High - ClubGG</text>
+</svg>
