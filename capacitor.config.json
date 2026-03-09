@@ -1,0 +1,27 @@
+{
+  "$schema": "https://capacitorjs.com/docs/config",
+  "appId": "com.explainit.app",
+  "appName": "ExplainIt",
+  "webDir": "out",
+  "server": {
+    "url": "https://explainit-one.vercel.app",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "preferredContentMode": "mobile",
+    "scheme": "ExplainIt"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#0a0a0f",
+      "showSpinner": false,
+      "launchAutoHide": true
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#0a0a0f"
+    }
+  }
+}
