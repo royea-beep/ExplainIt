@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "../components/header";
 import { StyleDNA, type StyleOverrides } from "../components/style-dna";
 import { useLanguage } from "@/lib/language-context";
+import { useEventsQueue } from "@/lib/events-queue-context";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/AuthModal";
 import { triggerConfetti } from "@/lib/confetti";
@@ -55,8 +56,10 @@ export default function EditorPageWrapper() {
 
 function EditorPage() {
   const { language, isHe } = useLanguage();
+  const trackEvent = useEventsQueue();
   const { token } = useAuth();
   const searchParams = useSearchParams();
+  const prevPhaseRef = useRef<Phase | null>(null);
   const [phase, setPhase] = useState<Phase>("input");
   const [request, setRequest] = useState("");
   const [project, setProject] = useState<SmartProject | null>(null);
@@ -112,6 +115,7 @@ function EditorPage() {
 
   const resumeDraft = () => {
     if (!draftData) return;
+    trackEvent({ type: "editor_draft_restored" });
     const d = draftData as Record<string, unknown>;
     setPhase(d.phase as Phase);
     setRequest((d.request as string) || "");
@@ -129,6 +133,19 @@ function EditorPage() {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
+  // Page view tracking
+  useEffect(() => {
+    trackEvent({ type: "editor_page_view", payload: { platform: searchParams.get("platform") || "direct" } });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Track phase transitions
+  useEffect(() => {
+    if (prevPhaseRef.current !== phase && phase === "done") {
+      trackEvent({ type: "editor_generate_complete" });
+    }
+    prevPhaseRef.current = phase;
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Pre-fill platform from URL query param (e.g. ?platform=clubgg)
   useEffect(() => {
     const platform = searchParams.get("platform");
@@ -138,6 +155,7 @@ function EditorPage() {
   }, [searchParams, phase, request]);
 
   const submitRequest = useCallback(async (req: string, ans: Record<string, string>) => {
+    trackEvent({ type: "editor_request_submit", payload: { request: req.substring(0, 50) } });
     setIsSubmitting(true);
     setError(null);
     setUpgradeRequired(false);
@@ -154,10 +172,12 @@ function EditorPage() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (data.authRequired) {
+          trackEvent({ type: "editor_auth_required" });
           setAuthOpen(true);
           throw new Error(isHe ? "התחבר כדי לנסות Smart Mode בחינם" : "Sign in to try Smart Mode for free");
         }
         if (data.upgradeRequired) {
+          trackEvent({ type: "editor_auth_required" });
           setUpgradeRequired(true);
           throw new Error(data.error || (isHe ? "Smart Mode זמין למנויי PRO ומעלה" : "Smart Mode requires a PRO or TEAM plan."));
         }
@@ -168,6 +188,7 @@ function EditorPage() {
       setProject(data);
 
       if (!data.ready && data.clarifyingQuestions && data.clarifyingQuestions.length > 0) {
+        trackEvent({ type: "editor_questions_received", payload: { count: data.clarifyingQuestions.length } });
         setPhase("questions");
       } else if (data.ready) {
         setPhase("editor");
@@ -273,6 +294,7 @@ function EditorPage() {
 
   const handleGenerate = async () => {
     if (!project) return;
+    trackEvent({ type: "editor_generate_start", payload: { stepCount: project.steps.length } });
     setPhase("generating");
     setError(null);
 
@@ -298,10 +320,12 @@ function EditorPage() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (data.authRequired) {
+          trackEvent({ type: "editor_auth_required" });
           setAuthOpen(true);
           throw new Error(isHe ? "התחבר כדי לייצר" : "Sign in to generate");
         }
         if (data.upgradeRequired) {
+          trackEvent({ type: "editor_auth_required" });
           setUpgradeRequired(true);
           throw new Error(data.error || (isHe ? "נדרש שדרוג" : "Upgrade required"));
         }
@@ -816,6 +840,7 @@ function EditorPage() {
         onClose={() => setAuthOpen(false)}
         reason={isHe ? "התחבר כדי להשתמש ב-Smart Mode" : "Sign in to use Smart Mode"}
         onSuccess={() => {
+          trackEvent({ type: "editor_auth_success" });
           setError(null);
           setUpgradeRequired(false);
           setPendingRetry(true);

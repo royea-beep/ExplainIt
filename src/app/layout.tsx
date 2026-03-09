@@ -22,6 +22,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://explainit-one.vercel.app'),
   title: "ExplainIt - Turn any website into explainer videos & docs",
   description: "Generate professional explainer videos, demo pages, and annotated PDFs from any website or web app automatically.",
   manifest: "/manifest.json",
@@ -35,11 +36,13 @@ export const metadata: Metadata = {
     description: "Generate professional explainer videos and PDF guides automatically. Share via WhatsApp.",
     type: "website",
     siteName: "ExplainIt",
+    images: [{ url: '/demo/clubgg/screenshots/step_1_ya4leyew.png', width: 400, height: 780 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "ExplainIt - Explainer Videos & Guides",
     description: "Generate professional explainer videos and PDF guides automatically.",
+    images: ['/demo/clubgg/screenshots/step_1_ya4leyew.png'],
   },
 };
 

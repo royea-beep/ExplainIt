@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Header } from "../components/header";
 import { useLanguage } from "@/lib/language-context";
+import { useEventsQueue } from "@/lib/events-queue-context";
 import { useAuth } from "@/lib/auth-context";
 
 interface ExportItem {
@@ -62,7 +63,9 @@ function screenNameFromFile(name: string): string {
 
 export default function ResultsPage() {
   const { language, isHe } = useLanguage();
+  const trackEvent = useEventsQueue();
   const { token } = useAuth();
+  const pageViewFired = useRef(false);
   const [runs, setRuns] = useState<ExportRun[]>([]);
   const [selectedRunIndex, setSelectedRunIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -72,6 +75,8 @@ export default function ResultsPage() {
   const [selectedItem, setSelectedItem] = useState<ExportItem | null>(null);
   const [lightboxType, setLightboxType] = useState<"image" | "video" | "pdf" | "markdown" | null>(null);
   const [mdContent, setMdContent] = useState<string>("");
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
   const run = runs[selectedRunIndex] ?? null;
 
@@ -86,7 +91,12 @@ export default function ResultsPage() {
       }
       if (!res.ok) throw new Error(`Server error (${res.status})`);
       const data = await res.json();
-      setRuns(data.runs || []);
+      const loadedRuns = data.runs || [];
+      setRuns(loadedRuns);
+      if (!pageViewFired.current) {
+        trackEvent({ type: "results_page_view", payload: { runCount: loadedRuns.length } });
+        pageViewFired.current = true;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load exports");
     } finally {
@@ -98,7 +108,8 @@ export default function ResultsPage() {
     fetchExports();
   }, [fetchExports]);
 
-  const openItem = async (item: ExportItem) => {
+  const openItem = async (item: ExportItem & { category?: string }) => {
+    trackEvent({ type: "results_item_open", payload: { category: item.category || item.type, name: item.name } });
     setSelectedItem(item);
     if (item.type === "screenshot") {
       setLightboxType("image");
@@ -307,13 +318,13 @@ export default function ResultsPage() {
             <button
               type="button"
               onClick={() => {
-                const origin = typeof window !== "undefined" ? window.location.origin : "";
+                trackEvent({ type: "results_share_whatsapp", payload: { type: "project" } });
                 // Share the demo page (publicly accessible) if available, otherwise share the first video
                 const shareTarget = run.demoPagePath
-                  ? origin + run.demoPagePath
+                  ? appUrl + run.demoPagePath
                   : run.videos.length > 0
-                    ? origin + run.videos[0].servePath
-                    : origin + "/results";
+                    ? appUrl + run.videos[0].servePath
+                    : appUrl + "/results";
                 const text = isHe
                   ? `${run.projectName} - סרטון הסבר מקצועי\n\nצפה כאן: ${shareTarget}`
                   : `${run.projectName} - Professional explainer\n\nWatch here: ${shareTarget}`;
@@ -552,6 +563,7 @@ export default function ResultsPage() {
               <a
                 href={selectedItem.servePath}
                 download
+                onClick={() => trackEvent({ type: "results_item_download", payload: { category: (selectedItem as ExportItem & { category?: string }).category || selectedItem.type } })}
                 className="text-xs sm:text-sm text-white/50 hover:text-white px-3 py-2 sm:py-2.5 rounded-lg bg-white/5 transition"
               >
                 {isHe ? "\u05D4\u05D5\u05E8\u05D3" : "Download"}
@@ -567,8 +579,8 @@ export default function ResultsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const origin = typeof window !== "undefined" ? window.location.origin : "";
-                  const shareUrl = origin + selectedItem.servePath;
+                  trackEvent({ type: "results_share_whatsapp", payload: { type: "item", category: (selectedItem as ExportItem & { category?: string }).category || selectedItem.type } });
+                  const shareUrl = appUrl + selectedItem.servePath;
                   const title = screenNameFromFile(selectedItem.name);
                   const text = isHe
                     ? `${run?.projectName || title} - ${title}\n\n${shareUrl}`

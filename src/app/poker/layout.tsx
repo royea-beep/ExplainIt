@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://explainit-one.vercel.app'),
   title: "ExplainIt for Poker Operators — Auto-generate club join guides",
   description:
     "Stop explaining to players how to join your club. Generate professional explainer videos + PDF guides for ClubGG, PPPoker, PokerBros in minutes. Share via WhatsApp.",
