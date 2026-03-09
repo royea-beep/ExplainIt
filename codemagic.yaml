@@ -8,8 +8,11 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.explainit.app
       vars:
-        # These are not secrets — just build config
         XCODE_SCHEME: "App"
+        # Set APP_STORE_APP_ID in Codemagic UI (App settings → Environment variables)
+        # It's the numeric Apple ID from App Store Connect → your app → General
+        # Required for auto-incrementing build numbers
+        # APP_STORE_APP_ID: "set_in_codemagic_ui"
       node: 20
     triggering:
       events:
