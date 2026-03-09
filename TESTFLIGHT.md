@@ -16,9 +16,13 @@
 
 ## Quick Start
 
-1. Complete Apple setup → see **[APPLE_SETUP.md](./APPLE_SETUP.md)**
-2. Connect Codemagic → see **[CODEMAGIC_SETUP.md](./CODEMAGIC_SETUP.md)**
-3. Push to `master` → Codemagic builds → TestFlight upload → done
+1. Fill Apple values → see **[APPLE_VALUES.md](./APPLE_VALUES.md)**
+2. Complete Apple setup → see **[APPLE_SETUP.md](./APPLE_SETUP.md)**
+3. Connect Codemagic → see **[CODEMAGIC_SETUP.md](./CODEMAGIC_SETUP.md)**
+4. Follow the checklist → see **[FIRST_TESTFLIGHT_BUILD_CHECKLIST.md](./FIRST_TESTFLIGHT_BUILD_CHECKLIST.md)**
+5. If build fails → see **[TESTFLIGHT_FAILURE_MODES.md](./TESTFLIGHT_FAILURE_MODES.md)**
+
+**Also available**: [CODEMAGIC_SECRETS_MAP.md](./CODEMAGIC_SECRETS_MAP.md) | [TESTFLIGHT_EXECUTION_SPLIT.md](./TESTFLIGHT_EXECUTION_SPLIT.md) | [APP_STORE_ASSETS.md](./APP_STORE_ASSETS.md) | [APPLE_REVIEW_RISKS.md](./APPLE_REVIEW_RISKS.md)
 
 ## What Happens on Each Push
 
