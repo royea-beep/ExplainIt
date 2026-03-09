@@ -8,7 +8,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.explainit.app
       vars:
-        XCODE_WORKSPACE: "ios/App/App.xcodeproj"
+        # These are not secrets — just build config
         XCODE_SCHEME: "App"
       node: 20
     triggering:
@@ -21,21 +21,37 @@ workflows:
       - name: Install dependencies
         script: |
           npm ci
-      - name: Sync Capacitor
+      - name: Prepare webDir for Capacitor
+        script: |
+          # Capacitor requires webDir to exist even in remote URL mode
+          mkdir -p out
+          echo '<html><body>Remote mode</body></html>' > out/index.html
+      - name: Sync Capacitor iOS
         script: |
           npx cap sync ios
       - name: Set up code signing
         script: |
           xcode-project use-profiles
+      - name: Increment build number
+        script: |
+          cd ios/App
+          LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" 2>/dev/null || echo 0)
+          agvtool new-version -all $((LATEST_BUILD + 1))
       - name: Build iOS
         script: |
           xcode-project build-ipa \
             --workspace "ios/App/App.xcodeproj/project.xcworkspace" \
-            --scheme "App"
+            --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
     publishing:
+      email:
+        recipients:
+          - royearguan@gmail.com
+        notify:
+          success: true
+          failure: true
       app_store_connect:
         auth: integration
         submit_to_testflight: true
