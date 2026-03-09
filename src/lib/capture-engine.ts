@@ -1,8 +1,9 @@
-import { chromium, type Page } from 'playwright';
-import * as fs from 'node:fs';
+import { type Page } from 'playwright';
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import type { ScreenInfo, ElementInfo, FlowInfo, FlowStep } from './types';
+import { acquireContext } from './browser-pool';
 
 // Re-export shared types for backwards compatibility
 export type { ScreenInfo, ElementInfo, FlowInfo, FlowStep } from './types';
@@ -31,12 +32,11 @@ export class CaptureEngine {
     const viewport = options?.viewport || this.defaultViewport;
     const outputDir = options?.outputDir || this.defaultOutputDir;
 
-    fs.mkdirSync(outputDir, { recursive: true });
+    await fs.mkdir(outputDir, { recursive: true });
 
-    const browser = await chromium.launch({ headless: true });
+    const pool = await acquireContext(viewport);
     try {
-      const context = await browser.newContext({ viewport });
-      const page = await context.newPage();
+      const page = await pool.context.newPage();
 
       // Handle credentials if provided
       if (options?.credentials) {
@@ -61,22 +61,17 @@ export class CaptureEngine {
         }
       }
 
-      await browser.close();
-
       return { screens, flows, screenshotDir: outputDir };
-    } catch (err) {
-      await browser.close();
-      throw err;
+    } finally {
+      await pool.release();
     }
   }
 
   async discoverScreens(url: string): Promise<ScreenInfo[]> {
-    const browser = await chromium.launch({ headless: true });
+    const pool = await acquireContext(this.defaultViewport);
     try {
-      const context = await browser.newContext({ viewport: this.defaultViewport });
-      const page = await context.newPage();
+      const page = await pool.context.newPage();
       const urls = await this.discoverUrls(page, url, this.defaultMaxScreens);
-      await browser.close();
 
       return urls.map((u) => {
         const parsedUrl = new URL(u);
@@ -90,30 +85,26 @@ export class CaptureEngine {
           elements: [],
         };
       });
-    } catch (err) {
-      await browser.close();
-      throw err;
+    } finally {
+      await pool.release();
     }
   }
 
   async takeScreenshot(url: string, name: string): Promise<string> {
     const outputDir = this.defaultOutputDir;
-    fs.mkdirSync(outputDir, { recursive: true });
+    await fs.mkdir(outputDir, { recursive: true });
 
-    const browser = await chromium.launch({ headless: true });
+    const pool = await acquireContext(this.defaultViewport);
     try {
-      const context = await browser.newContext({ viewport: this.defaultViewport });
-      const page = await context.newPage();
+      const page = await pool.context.newPage();
       await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
       const filePath = path.join(outputDir, `${name}.png`);
       await page.screenshot({ path: filePath, fullPage: true });
-      await browser.close();
 
       return filePath;
-    } catch (err) {
-      await browser.close();
-      throw err;
+    } finally {
+      await pool.release();
     }
   }
 
@@ -124,7 +115,6 @@ export class CaptureEngine {
   ): Promise<void> {
     await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
-    // Try common login form patterns
     const usernameSelectors = [
       'input[type="email"]',
       'input[name="username"]',
@@ -155,7 +145,6 @@ export class CaptureEngine {
       }
     }
 
-    // Try to submit
     const submitSelectors = [
       'button[type="submit"]',
       'input[type="submit"]',
@@ -178,13 +167,11 @@ export class CaptureEngine {
     try {
       await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
     } catch {
-      // Try with domcontentloaded if networkidle times out
       await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
     }
 
     const baseOrigin = new URL(baseUrl).origin;
 
-    // Collect all same-origin links
     const links = await page.evaluate((origin: string) => {
       const anchors = Array.from(document.querySelectorAll('a[href]'));
       const urls = new Set<string>();
@@ -204,11 +191,9 @@ export class CaptureEngine {
       return Array.from(urls);
     }, baseOrigin);
 
-    // Always include the base URL first
     const basePathUrl = baseOrigin + new URL(baseUrl).pathname;
     const allUrls = [basePathUrl, ...links.filter((l) => l !== basePathUrl)];
 
-    // Deduplicate and limit
     const unique = Array.from(new Set(allUrls)).slice(0, maxScreens);
     return unique;
   }
@@ -230,15 +215,12 @@ export class CaptureEngine {
     const name = this.urlToName(parsedUrl.pathname);
     const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '_');
 
-    // Take screenshot
     const screenshotPath = path.join(outputDir, `${safeName}.png`);
     await page.screenshot({ path: screenshotPath, fullPage: false });
 
-    // Get page title/description
     const title = await page.title();
     const description = title || `Screen: ${name}`;
 
-    // Detect elements
     const elements = await this.detectElements(page);
 
     return {
@@ -272,7 +254,7 @@ export class CaptureEngine {
     for (const { selector, type } of selectors) {
       const els = await page.$$(selector);
       for (const el of els) {
-        if (idCounter > 20) break; // Limit to 20 elements
+        if (idCounter > 20) break;
 
         try {
           const box = await el.boundingBox();
@@ -313,7 +295,6 @@ export class CaptureEngine {
     const steps: FlowStep[] = [];
     let order = 1;
 
-    // Add a "view" step first
     steps.push({
       order: order++,
       action: 'navigate',
@@ -321,7 +302,6 @@ export class CaptureEngine {
       description: `Navigate to ${screen.name}`,
     });
 
-    // Add steps for key elements (up to 5)
     const keyElements = screen.elements.slice(0, 5);
     for (const el of keyElements) {
       let action = 'observe';

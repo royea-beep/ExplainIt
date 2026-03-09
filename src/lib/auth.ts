@@ -96,4 +96,28 @@ export async function getUserIdFromRequest(request: Request): Promise<string | n
   return payload?.userId ?? null;
 }
 
+/**
+ * Build Set-Cookie header value for the auth token.
+ * httpOnly: prevents XSS from reading the cookie.
+ * SameSite=Lax: CSRF protection (blocks cross-origin POST but allows navigation).
+ * Secure: only sent over HTTPS in production.
+ */
+export function buildAuthCookie(token: string): string {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const parts = [
+    `${COOKIE_NAME}=${encodeURIComponent(token)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${7 * 24 * 60 * 60}`, // 7 days
+  ];
+  if (isProduction) parts.push('Secure');
+  return parts.join('; ');
+}
+
+/** Build Set-Cookie header to clear the auth cookie. */
+export function buildClearAuthCookie(): string {
+  return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+}
+
 export { COOKIE_NAME };

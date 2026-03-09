@@ -23,6 +23,7 @@ model User {
   updatedAt     DateTime @updatedAt @map("updated_at")
   refreshTokens RefreshToken[]
   pipelines     Pipeline[]
+  styleProfile  StyleProfile?
   @@map("users")
 }
 
@@ -40,11 +41,45 @@ model RefreshToken {
 }
 
 model Pipeline {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stage        String   @default("intake") // intake | capture | produce | document | done | error
+  progress     Int      @default(0)        // 0-100
+  message      String   @default("")
+  currentAgent String   @default("") @map("current_agent")
+  input        String   @default("{}") // JSON PipelineInput
+  result       String?  // JSON PipelineResult (null until done)
+  error        String?
+  cancelled    Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
   @@index([userId])
   @@index([userId, createdAt])
   @@map("pipelines")
+}
+
+model StyleProfile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Learned defaults (aggregated from past pipelines)
+  preferredLanguage   String?  @map("preferred_language")     // he | en
+  preferredOrientation String? @map("preferred_orientation")  // portrait | landscape
+  preferredMaxScreens Int?     @map("preferred_max_screens")  // 1-30
+
+  // Style preferences (user-settable + auto-learned)
+  detailLevel         String   @default("standard") @map("detail_level")  // minimal | standard | detailed
+  videoTheme          String   @default("modern") @map("video_theme")     // modern | clean | bold
+  includeAnnotations  Boolean  @default(true) @map("include_annotations")
+
+  // Tracking
+  analyzedPipelineCount Int    @default(0) @map("analyzed_pipeline_count")
+  lastAnalyzedAt      DateTime? @map("last_analyzed_at")
+
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("style_profiles")
 }

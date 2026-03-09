@@ -1,6 +1,7 @@
 import { CaptureEngine, type CaptureOptions, type CaptureResult } from './capture-engine';
 import { VideoProducer, type VideoOptions, type VideoResult } from './video-producer';
 import { PDFGenerator, type PDFOptions, type PDFResult } from './pdf-generator';
+import { PDF_DETAIL_LEVELS } from './style-engine';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -12,6 +13,16 @@ export interface PipelineInput {
   language?: 'he' | 'en';
   orientation?: 'portrait' | 'landscape' | 'both';
   maxScreens?: number;
+  /** Isolated export directory for this pipeline run. Defaults to exports/ */
+  exportDir?: string;
+  /** Video color theme — modern | clean | bold. Default: modern */
+  videoTheme?: string;
+  /** PDF detail level — minimal | standard | detailed. Default: standard */
+  detailLevel?: string;
+  /** Owner user ID — written to report.json for ownership checks */
+  userId?: string;
+  /** Whether to add watermark to output (free tier) */
+  watermark?: boolean;
 }
 
 export interface PipelineStatus {
@@ -36,6 +47,10 @@ export interface PipelineResult {
 export interface ReportJson {
   projectName: string;
   generatedAt: string;
+  userId?: string;
+  videoTheme?: string;
+  detailLevel?: string;
+  source?: 'url' | 'smart';
   screens: Array<{
     id: string;
     name: string;
@@ -86,7 +101,7 @@ export class Pipeline {
   async run(input: PipelineInput): Promise<PipelineResult> {
     const errors: string[] = [];
     const projectName = input.projectName || 'ExplainIt Project';
-    const baseDir = path.resolve('exports');
+    const baseDir = path.resolve(input.exportDir || 'exports');
 
     // Ensure export dirs exist
     await fs.promises.mkdir(path.join(baseDir, 'screenshots'), { recursive: true });
@@ -165,6 +180,8 @@ export class Pipeline {
       height: viewport.height,
       outputDir: path.join(baseDir, 'videos'),
       language: input.language || 'he',
+      theme: input.videoTheme || 'modern',
+      watermark: input.watermark,
     };
 
     for (let i = 0; i < captureResult.screens.length; i++) {
@@ -200,11 +217,12 @@ export class Pipeline {
 
     let pdfResult: PDFResult | undefined;
     try {
+      const detailConfig = PDF_DETAIL_LEVELS[input.detailLevel || 'standard'] || PDF_DETAIL_LEVELS.standard;
       const pdfOptions: PDFOptions = {
         title: projectName,
         language: input.language || 'he',
         outputDir: path.join(baseDir, 'docs'),
-        includeAnnotations: true,
+        includeAnnotations: detailConfig.includeAnnotations,
       };
       pdfResult = await this.pdfGenerator.generateGuide(captureResult.screens, pdfOptions);
       this.updateStatus({ progress: 90, message: 'PDF guide generated' });
@@ -217,6 +235,10 @@ export class Pipeline {
     const report: ReportJson = {
       projectName,
       generatedAt: new Date().toISOString(),
+      userId: input.userId,
+      videoTheme: input.videoTheme || 'modern',
+      detailLevel: input.detailLevel || 'standard',
+      source: 'url',
       screens: captureResult.screens.map(s => {
         const video = videos.find(v => v.screenId === s.id);
         return {

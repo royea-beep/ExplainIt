@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import path from 'node:path';
 import type { ScreenInfo } from './types';
 
@@ -58,7 +59,7 @@ export class PDFGenerator {
     const includeAnnotations = options?.includeAnnotations ?? true;
 
     // Ensure output directory exists
-    fs.mkdirSync(outputDir, { recursive: true });
+    await fsp.mkdir(outputDir, { recursive: true });
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const baseName = `${title.replace(/\s+/g, '_')}_${timestamp}`;
@@ -602,6 +603,6 @@ export class PDFGenerator {
       lines.push('');
     });
 
-    fs.writeFileSync(opts.mdPath, lines.join('\n'), 'utf-8');
+    await fsp.writeFile(opts.mdPath, lines.join('\n'), 'utf-8');
   }
 }

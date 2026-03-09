@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyPassword, signToken } from '@/lib/auth';
+import { verifyPassword, signToken, buildAuthCookie } from '@/lib/auth';
 import { loginSchema } from '@/lib/validation';
+import { checkRateLimit, getClientIp } from '@royea/shared-utils/rate-limit';
+
+// Strict rate limit for login: 10 attempts per minute per IP
+const LOGIN_LIMIT = { maxRequests: 10, windowMs: 60_000 };
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const limit = checkRateLimit(`auth:login:${ip}`, LOGIN_LIMIT);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many login attempts. Try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(limit.retryAfterMs / 1000)) } },
+    );
+  }
+
   try {
     const body = await req.json();
     const data = loginSchema.parse(body);
@@ -20,10 +33,12 @@ export async function POST(req: NextRequest) {
 
     const token = await signToken({ userId: user.id, email: user.email });
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       user: { id: user.id, email: user.email },
       token,
     });
+    res.headers.set('Set-Cookie', buildAuthCookie(token));
+    return res;
   } catch (err) {
     if (err && typeof err === 'object' && 'name' in err && (err as { name: string }).name === 'ZodError') {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 });

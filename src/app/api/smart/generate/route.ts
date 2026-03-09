@@ -3,10 +3,16 @@ import { SmartEngine, type SmartProject, type ProjectStep } from '@/lib/smart-en
 import { VideoProducer } from '@/lib/video-producer';
 import { PDFGenerator } from '@/lib/pdf-generator';
 import type { ScreenInfo, ElementInfo } from '@/lib/types';
-import { chromium } from 'playwright';
-import * as fs from 'node:fs';
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
+import { acquireContext } from '@/lib/browser-pool';
 import * as path from 'node:path';
 import { checkRateLimit, getClientIp, API_WRITE_LIMIT } from '@royea/shared-utils/rate-limit';
+import { sanitizeForLlm } from '@royea/prompt-guard';
+import { PDF_DETAIL_LEVELS, analyzeAndUpdateStyle } from '@/lib/style-engine';
+import { getUserIdFromRequest } from '@/lib/auth';
+import { getUserPlan, canUseSmartMode, canUseSmartModeFree, shouldWatermark } from '@/lib/plan-guard';
+import { prisma } from '@/lib/db';
 
 // Validate step ID to prevent path traversal
 function isValidStepId(id: string): boolean {
@@ -38,6 +44,10 @@ function stepToScreenInfo(step: ProjectStep, screenshotPath: string): ScreenInfo
 }
 
 export async function POST(request: NextRequest) {
+  const userId = await getUserIdFromRequest(request);
+  const plan = await getUserPlan(userId);
+  const addWatermark = shouldWatermark(plan);
+
   const ip = getClientIp(request);
   const limit = checkRateLimit(`generate:${ip}`, API_WRITE_LIMIT);
   if (!limit.allowed) {
@@ -50,9 +60,60 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const project: SmartProject = body.project;
+    const videoTheme: string = body.videoTheme || 'modern';
+    const detailLevel: string = body.detailLevel || 'standard';
+    const existingRunId: string | undefined = body.existingRunId;
+
+    // Check if this is a re-generation of an existing run the user owns
+    let isOwnerRegeneration = false;
+    if (existingRunId && /^smart_\d+$/.test(existingRunId) && userId) {
+      const existingDir = path.resolve(`exports/${existingRunId}`);
+      const reportPath = path.join(existingDir, 'report.json');
+      if (fs.existsSync(reportPath)) {
+        try {
+          const report = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+          if (report.userId === userId) isOwnerRegeneration = true;
+        } catch { /* invalid report, treat as new */ }
+      }
+    }
+
+    // Plan gating: PRO+ users always pass. Re-generations always pass.
+    // New generations for FREE users check the trial limit.
+    if (!canUseSmartMode(plan) && !isOwnerRegeneration) {
+      if (userId) {
+        const trial = await canUseSmartModeFree(userId);
+        if (!trial.allowed) {
+          return NextResponse.json(
+            {
+              error: `Free trial used (${trial.used}/${trial.limit}). Upgrade to PRO for unlimited Smart Mode.`,
+              upgradeRequired: true,
+              currentPlan: plan,
+            },
+            { status: 403 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          {
+            error: 'Sign in to try Smart Mode for free.',
+            upgradeRequired: true,
+            authRequired: true,
+            currentPlan: plan,
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     if (!project || !project.steps || project.steps.length === 0) {
       return NextResponse.json({ error: 'No steps in project' }, { status: 400 });
+    }
+
+    // Sanitize user-editable text fields (block injection, preserve PII for output)
+    project.title = sanitizeForLlm(project.title, { maskPii: false });
+    for (const step of project.steps) {
+      step.title = sanitizeForLlm(step.title, { maskPii: false });
+      step.description = sanitizeForLlm(step.description, { maskPii: false });
     }
 
     // Cap steps at 20
@@ -67,27 +128,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const screenshotsDir = path.resolve('exports/screenshots');
-    const videosDir = path.resolve('exports/videos');
-    const docsDir = path.resolve('exports/docs');
-    fs.mkdirSync(screenshotsDir, { recursive: true });
-    fs.mkdirSync(videosDir, { recursive: true });
-    fs.mkdirSync(docsDir, { recursive: true });
+    // Determine runId: reuse existing run (re-generation) or create new
+    let runId: string;
+    let isRegeneration = false;
+    if (existingRunId && /^smart_\d+$/.test(existingRunId)) {
+      const existingDir = path.resolve(`exports/${existingRunId}`);
+      const existingReport = fs.existsSync(path.join(existingDir, 'report.json'))
+        ? JSON.parse(fs.readFileSync(path.join(existingDir, 'report.json'), 'utf-8'))
+        : null;
+      // Verify user owns this run
+      if (existingReport && existingReport.userId === userId) {
+        runId = existingRunId;
+        isRegeneration = true;
+      } else {
+        runId = `smart_${Date.now()}`;
+      }
+    } else {
+      runId = `smart_${Date.now()}`;
+    }
+
+    const baseExportDir = path.resolve(`exports/${runId}`);
+    const screenshotsDir = path.join(baseExportDir, 'screenshots');
+    const videosDir = path.join(baseExportDir, 'videos');
+    const docsDir = path.join(baseExportDir, 'docs');
+    await fsp.mkdir(screenshotsDir, { recursive: true });
+    await fsp.mkdir(videosDir, { recursive: true });
+    await fsp.mkdir(docsDir, { recursive: true });
 
     // Step 1: Generate mockup HTML files and screenshot them with Playwright
     const engine = new SmartEngine();
     const screenInfos: ScreenInfo[] = [];
 
-    const browser = await chromium.launch({ headless: true });
+    const pool = await acquireContext({ width: 400, height: 780 });
     try {
-      const context = await browser.newContext({ viewport: { width: 400, height: 780 } });
-
       for (const step of project.steps) {
-        const mockupPath = engine.generateStepMockupImage(step, path.resolve('exports/mockups'));
+        const mockupPath = await engine.generateStepMockupImage(step, path.join(baseExportDir, 'mockups'));
 
         if (mockupPath && fs.existsSync(mockupPath)) {
-          // Screenshot the mockup HTML
-          const page = await context.newPage();
+          const page = await pool.context.newPage();
           await page.goto(`file:///${mockupPath.replace(/\\/g, '/')}`, { waitUntil: 'networkidle' });
           const screenshotPath = path.join(screenshotsDir, `step_${step.order}_${step.id}.png`);
           await page.screenshot({ path: screenshotPath });
@@ -95,18 +173,17 @@ export async function POST(request: NextRequest) {
 
           screenInfos.push(stepToScreenInfo(step, screenshotPath));
         } else {
-          // No mockup - create a simple colored placeholder screenshot
           const screenshotPath = path.join(screenshotsDir, `step_${step.order}_${step.id}.png`);
           const pngBuf = Buffer.from(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
             'base64'
           );
-          fs.writeFileSync(screenshotPath, pngBuf);
+          await fsp.writeFile(screenshotPath, pngBuf);
           screenInfos.push(stepToScreenInfo(step, screenshotPath));
         }
       }
     } finally {
-      await browser.close();
+      await pool.release();
     }
 
     // Step 2: Generate videos
@@ -118,6 +195,8 @@ export async function POST(request: NextRequest) {
         language: project.language,
         width: 1080,
         height: 1920,
+        theme: videoTheme,
+        watermark: addWatermark,
       });
       videos.push(video);
     }
@@ -127,17 +206,22 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Generate PDF
     const pdfGenerator = new PDFGenerator();
+    const detailConfig = PDF_DETAIL_LEVELS[detailLevel] || PDF_DETAIL_LEVELS.standard;
     const pdfResult = await pdfGenerator.generateGuide(screenInfos, {
       title: project.title,
       language: project.language,
       outputDir: docsDir,
-      includeAnnotations: true,
+      includeAnnotations: detailConfig.includeAnnotations,
     });
 
-    // Step 4: Save report
+    // Step 4: Save report (with userId and style metadata for ownership + display)
     const report = {
       projectName: project.title,
       generatedAt: new Date().toISOString(),
+      userId: userId || undefined,
+      videoTheme,
+      detailLevel,
+      source: 'smart' as const,
       platform: project.platform,
       screens: screenInfos.map((s, i) => ({
         id: s.id,
@@ -153,16 +237,44 @@ export async function POST(request: NextRequest) {
       totalVideos: videos.length,
     };
 
-    fs.writeFileSync(path.resolve('exports/report.json'), JSON.stringify(report, null, 2));
+    await fsp.writeFile(path.join(baseExportDir, 'report.json'), JSON.stringify(report, null, 2));
 
     // Save screens.json
-    fs.writeFileSync(
+    await fsp.writeFile(
       path.join(screenshotsDir, 'screens.json'),
       JSON.stringify(screenInfos, null, 2)
     );
 
+    // Create Pipeline DB record only for NEW generations (not re-generations)
+    // This ensures the free trial counter only increments once per project
+    if (userId && !isRegeneration) {
+      const pipelineInput = JSON.stringify({
+        language: project.language,
+        orientation: 'portrait',
+        maxScreens: project.steps.length,
+        videoTheme,
+        detailLevel,
+      });
+
+      await prisma.pipeline.create({
+        data: {
+          userId,
+          stage: 'done',
+          progress: 100,
+          message: `Smart Mode: ${screenInfos.length} screens, ${videos.length} videos.`,
+          currentAgent: 'SmartEngine',
+          input: pipelineInput,
+          result: JSON.stringify({ totalScreens: screenInfos.length, totalVideos: videos.length }),
+        },
+      }).catch(() => {}); // Non-fatal
+
+      // Trigger style learning (non-blocking)
+      analyzeAndUpdateStyle(userId).catch(() => {});
+    }
+
     return NextResponse.json({
       success: true,
+      runId,
       totalScreens: screenInfos.length,
       totalVideos: videos.length,
       pdfPages: pdfResult.pageCount,

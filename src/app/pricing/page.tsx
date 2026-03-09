@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Header } from "../components/header";
 import { useLanguage } from "@/lib/language-context";
 import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/AuthModal";
 
 type PlanId = "free" | "pro" | "team";
 
@@ -67,12 +68,13 @@ export default function PricingPage() {
   const { token, loading: authLoading } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
 
   const title = isHe ? "תמחור" : "Pricing";
 
   const handleCheckout = async (plan: "pro" | "team") => {
     if (!token) {
-      setError(isHe ? "התחבר כדי להירשם" : "Sign in to subscribe");
+      setAuthOpen(true);
       return;
     }
     setError(null);
@@ -192,12 +194,13 @@ export default function PricingPage() {
                         : plan.ctaEn}
                   </button>
                 ) : (
-                  <Link
-                    href="/"
+                  <button
+                    type="button"
+                    onClick={() => setAuthOpen(true)}
                     className="w-full py-3 rounded-xl font-semibold text-center bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition"
                   >
                     {isHe ? "התחבר כדי להירשם" : "Sign in to subscribe"}
-                  </Link>
+                  </button>
                 )}
               </div>
             ))}
@@ -232,6 +235,12 @@ export default function PricingPage() {
           ExplainIt — Pricing
         </div>
       </footer>
+
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        reason={isHe ? "התחבר כדי לרכוש מנוי" : "Sign in to subscribe to a plan"}
+      />
     </div>
   );
 }

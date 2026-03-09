@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken, signToken } from '@/lib/auth';
+import { verifyToken, signToken, buildAuthCookie } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +17,12 @@ export async function POST(req: NextRequest) {
 
     const newToken = await signToken({ userId: payload.userId, email: payload.email });
 
-    return NextResponse.json({ user: { id: payload.userId, email: payload.email }, token: newToken });
+    const res = NextResponse.json({
+      user: { id: payload.userId, email: payload.email },
+      token: newToken,
+    });
+    res.headers.set('Set-Cookie', buildAuthCookie(newToken));
+    return res;
   } catch (err) {
     console.error('Refresh token error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

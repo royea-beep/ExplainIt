@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@royea/shared-utils', '@royea/flush-queue'],
+  transpilePackages: ['@royea/shared-utils', '@royea/flush-queue', '@royea/prompt-guard'],
   experimental: {
     serverComponentsExternalPackages: ['pdfkit', 'playwright'],
   },

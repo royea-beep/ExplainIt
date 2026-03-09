@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 // ---------------------------------------------------------------------------
@@ -493,15 +493,15 @@ export class SmartEngine {
     };
   }
 
-  generateStepMockupImage(step: ProjectStep, outputDir: string): string {
+  async generateStepMockupImage(step: ProjectStep, outputDir: string): Promise<string> {
     if (!step.mockupHtml) return '';
-    fs.mkdirSync(outputDir, { recursive: true });
+    await fs.mkdir(outputDir, { recursive: true });
     const filePath = path.join(outputDir, `step_${step.id}.html`);
     const fullHtml = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#080810;display:flex;align-items:center;justify-content:center;min-height:100vh;}</style>
 </head><body>${step.mockupHtml}</body></html>`;
-    fs.writeFileSync(filePath, fullHtml);
+    await fs.writeFile(filePath, fullHtml);
     return filePath;
   }
 }

@@ -12,10 +12,14 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "jose": "^5.9.6",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0",
     "@prisma/client": "^6.19.2",
-    "@royea/flush-queue": "file:../FlushQueue",
-    "@royea/shared-utils": "file:../shared-utils",
+    "@royea/flush-queue": "file:packages/FlushQueue",
+    "@royea/prompt-guard": "file:packages/PromptGuard",
+    "@royea/shared-utils": "file:packages/shared-utils",
+    "jose": "^5.9.6",
     "next": "14.2.35",
     "pdfkit": "^0.17.2",
     "playwright": "^1.58.2",

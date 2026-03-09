@@ -1,52 +1,46 @@
+/**
+ * Re-export shared i18n from @royea/shared-utils with browser language detection.
+ * Consumers import from '@/lib/language-context' — no import changes needed.
+ */
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+export {
+  useLanguage,
+  isHebrew,
+  detectDir,
+  type Language,
+  type LanguageContextValue,
+  type LanguageProviderProps,
+} from '@royea/shared-utils/i18n';
 
-type Language = "he" | "en";
+import { LanguageProvider as BaseLanguageProvider, type LanguageProviderProps, type Language } from '@royea/shared-utils/i18n';
+import { type ReactNode } from 'react';
 
-interface LanguageContextValue {
-  language: Language;
-  dir: "rtl" | "ltr";
-  isHe: boolean;
-  setLanguage: (lang: Language) => void;
-  toggleLanguage: () => void;
+/**
+ * Detect default language from browser.
+ * Returns "he" if browser language starts with "he", otherwise "en".
+ */
+function detectBrowserLanguage(): Language {
+  if (typeof navigator === 'undefined') return 'en';
+  const lang = navigator.language || (navigator as { userLanguage?: string }).userLanguage || '';
+  return lang.toLowerCase().startsWith('he') ? 'he' : 'en';
 }
 
-const LanguageContext = createContext<LanguageContextValue | null>(null);
+interface Props extends Omit<LanguageProviderProps, 'defaultLang'> {
+  children: ReactNode;
+  defaultLang?: Language;
+}
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLang] = useState<Language>("he");
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem("explainit-lang");
-    if (saved === "en" || saved === "he") {
-      setLang(saved);
-    }
-  }, []);
-
-  // Sync to <html> attributes and localStorage
-  useEffect(() => {
-    document.documentElement.lang = language;
-    document.documentElement.dir = language === "he" ? "rtl" : "ltr";
-    localStorage.setItem("explainit-lang", language);
-  }, [language]);
-
-  const setLanguage = useCallback((lang: Language) => setLang(lang), []);
-  const toggleLanguage = useCallback(() => setLang((l) => (l === "he" ? "en" : "he")), []);
-
-  const dir = language === "he" ? "rtl" : "ltr";
-  const isHe = language === "he";
-
+/**
+ * LanguageProvider with automatic browser language detection.
+ * Hebrew browsers → Hebrew default. All others → English default.
+ * Overridden by localStorage if user has toggled before.
+ */
+export function LanguageProvider({ children, defaultLang, ...rest }: Props) {
+  const detected = defaultLang ?? detectBrowserLanguage();
   return (
-    <LanguageContext.Provider value={{ language, dir, isHe, setLanguage, toggleLanguage }}>
+    <BaseLanguageProvider defaultLang={detected} {...rest}>
       {children}
-    </LanguageContext.Provider>
+    </BaseLanguageProvider>
   );
-}
-
-export function useLanguage(): LanguageContextValue {
-  const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error("useLanguage must be used within LanguageProvider");
-  return ctx;
 }
