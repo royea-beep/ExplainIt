@@ -76,7 +76,7 @@ cp apple-values.template.json apple-values.local.json
 node scripts/build-day.js --values apple-values.local.json
 ```
 
-This single command checks both repo readiness (30 checks) and Apple value formats. It catches:
+This single command checks both repo readiness (28 checks) and Apple value formats. It catches:
 - APP_STORE_APP_ID that's not numeric (common: pasting Key ID instead)
 - KEY_ID that's not exactly 10 uppercase alphanumeric characters
 - ISSUER_ID that's not UUID format
@@ -106,6 +106,14 @@ This single command checks both repo readiness (30 checks) and Apple value forma
 13. Value: the numeric Apple ID from Step 3 (e.g. `6741234567`)
 14. Secure: **No**
 15. Click **Add**
+
+### 7c — Verify before continuing
+
+Before triggering the build, confirm these in Codemagic UI:
+
+- [ ] Teams → Integrations → App Store Connect shows **Connected** (green) with your Issuer ID
+- [ ] Your app → Environment variables shows `APP_STORE_APP_ID` with a numeric value
+- [ ] Your app → Build configuration shows `codemagic.yaml` detected (not "Workflow Editor")
 
 ## Step 8 — Trigger First Build (~1 min)
 

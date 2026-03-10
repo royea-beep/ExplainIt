@@ -171,9 +171,9 @@ if (codemagicYaml && codemagicYaml.includes("APP_STORE_APP_ID")) {
   warning("APP_STORE_APP_ID usage", "codemagic.yaml doesn't reference APP_STORE_APP_ID");
 }
 
-// Check beta group
+// Reminder about beta group (not a warning — just an info note)
 if (codemagicYaml && codemagicYaml.includes("Internal Testers")) {
-  warning("Beta group 'Internal Testers'", "Must exist in App Store Connect → TestFlight BEFORE first build (or publishing step will warn)");
+  console.log(`  ℹ️  Reminder: create "Internal Testers" group in App Store Connect → TestFlight before first build`);
 }
 
 // ── Summary ──
