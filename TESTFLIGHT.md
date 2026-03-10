@@ -13,14 +13,17 @@
 | Codemagic config | `codemagic.yaml` with full build pipeline ✅ |
 | Build number | Auto-incremented by Codemagic ✅ |
 | No local Mac needed | All builds via Codemagic cloud ✅ |
+| Preflight check | `node scripts/preflight-testflight.js` — 30/30 ✅ |
 
 ## Quick Start
 
-1. Fill Apple values → see **[APPLE_VALUES.md](./APPLE_VALUES.md)**
-2. Complete Apple setup → see **[APPLE_SETUP.md](./APPLE_SETUP.md)**
-3. Connect Codemagic → see **[CODEMAGIC_SETUP.md](./CODEMAGIC_SETUP.md)**
-4. Follow the checklist → see **[FIRST_TESTFLIGHT_BUILD_CHECKLIST.md](./FIRST_TESTFLIGHT_BUILD_CHECKLIST.md)**
-5. If build fails → see **[TESTFLIGHT_FAILURE_MODES.md](./TESTFLIGHT_FAILURE_MODES.md)**
+1. Run preflight → `node scripts/preflight-testflight.js`
+2. Fill Apple values → see **[APPLE_VALUES.md](./APPLE_VALUES.md)**
+3. Complete Apple setup → see **[APPLE_SETUP.md](./APPLE_SETUP.md)**
+4. Connect Codemagic → see **[CODEMAGIC_SETUP.md](./CODEMAGIC_SETUP.md)**
+5. Follow the checklist → see **[FIRST_TESTFLIGHT_BUILD_CHECKLIST.md](./FIRST_TESTFLIGHT_BUILD_CHECKLIST.md)**
+6. Trigger build → see **[FIRST_CODEMAGIC_BUILD_OPERATOR.md](./FIRST_CODEMAGIC_BUILD_OPERATOR.md)**
+7. If build fails → see **[TESTFLIGHT_FAILURE_MODES.md](./TESTFLIGHT_FAILURE_MODES.md)** + **[TESTFLIGHT_BUILD_LOG_PARSER.md](./TESTFLIGHT_BUILD_LOG_PARSER.md)**
 
 **Also available**: [CODEMAGIC_SECRETS_MAP.md](./CODEMAGIC_SECRETS_MAP.md) | [TESTFLIGHT_EXECUTION_SPLIT.md](./TESTFLIGHT_EXECUTION_SPLIT.md) | [APP_STORE_ASSETS.md](./APP_STORE_ASSETS.md) | [APPLE_REVIEW_RISKS.md](./APPLE_REVIEW_RISKS.md)
 
