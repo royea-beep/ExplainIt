@@ -29,6 +29,10 @@ yarn-error.log*
 .env
 .env*.local
 
+# Apple values (local only — secrets go to Codemagic UI, not repo)
+apple-values.local.json
+*.p8
+
 # vercel
 .vercel
 

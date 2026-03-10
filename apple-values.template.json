@@ -1,0 +1,23 @@
+{
+  "_instructions": "Fill this after Apple portal setup. Validate with: node scripts/validate-apple-values.js --values apple-values.local.json",
+  "_do_not_commit": "Rename to apple-values.local.json (gitignored). Values go into Codemagic UI, not the repo.",
+
+  "APP_STORE_APP_ID": "",
+  "KEY_ID": "",
+  "ISSUER_ID": "",
+  "p8File": "AuthKey_XXXXXXXXXX.p8",
+
+  "_where_each_goes": {
+    "APP_STORE_APP_ID": "Codemagic → App Settings → Environment Variables (not secure)",
+    "KEY_ID": "Codemagic → Teams → Integrations → App Store Connect",
+    "ISSUER_ID": "Codemagic → Teams → Integrations → App Store Connect",
+    "p8File": "Codemagic → Teams → Integrations → App Store Connect (file upload)"
+  },
+
+  "_where_to_find_each": {
+    "APP_STORE_APP_ID": "App Store Connect → your app → General → Apple ID (numeric)",
+    "KEY_ID": "App Store Connect → Users and Access → Integrations → API → Key ID column (10 chars)",
+    "ISSUER_ID": "App Store Connect → Users and Access → Integrations → API → Issuer ID at top (UUID)",
+    "p8File": "Downloaded ONCE when API key was created — cannot re-download"
+  }
+}

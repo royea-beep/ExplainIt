@@ -17,15 +17,21 @@
 
 ## Quick Start
 
-1. Run preflight → `node scripts/preflight-testflight.js`
-2. Fill Apple values → see **[APPLE_VALUES.md](./APPLE_VALUES.md)**
-3. Complete Apple setup → see **[APPLE_SETUP.md](./APPLE_SETUP.md)**
-4. Connect Codemagic → see **[CODEMAGIC_SETUP.md](./CODEMAGIC_SETUP.md)**
-5. Follow the checklist → see **[FIRST_TESTFLIGHT_BUILD_CHECKLIST.md](./FIRST_TESTFLIGHT_BUILD_CHECKLIST.md)**
-6. Trigger build → see **[FIRST_CODEMAGIC_BUILD_OPERATOR.md](./FIRST_CODEMAGIC_BUILD_OPERATOR.md)**
-7. If build fails → see **[TESTFLIGHT_FAILURE_MODES.md](./TESTFLIGHT_FAILURE_MODES.md)** + **[TESTFLIGHT_BUILD_LOG_PARSER.md](./TESTFLIGHT_BUILD_LOG_PARSER.md)**
+**Start here → [TESTFLIGHT_QUICKSTART.md](./TESTFLIGHT_QUICKSTART.md)** — single page, top to bottom, ~20 min.
 
-**Also available**: [CODEMAGIC_SECRETS_MAP.md](./CODEMAGIC_SECRETS_MAP.md) | [TESTFLIGHT_EXECUTION_SPLIT.md](./TESTFLIGHT_EXECUTION_SPLIT.md) | [APP_STORE_ASSETS.md](./APP_STORE_ASSETS.md) | [APPLE_REVIEW_RISKS.md](./APPLE_REVIEW_RISKS.md)
+```bash
+# 1. Verify repo is ready
+node scripts/preflight-testflight.js
+
+# 2. After Apple portal setup, validate your values
+node scripts/validate-apple-values.js --values apple-values.local.json
+
+# 3. After Codemagic setup, trigger build
+git push origin master
+```
+
+**Reference docs** (only if quickstart doesn't cover your situation):
+[APPLE_VALUES.md](./APPLE_VALUES.md) | [CODEMAGIC_SECRETS_MAP.md](./CODEMAGIC_SECRETS_MAP.md) | [TESTFLIGHT_FAILURE_MODES.md](./TESTFLIGHT_FAILURE_MODES.md) | [TESTFLIGHT_BUILD_LOG_PARSER.md](./TESTFLIGHT_BUILD_LOG_PARSER.md) | [APP_STORE_ASSETS.md](./APP_STORE_ASSETS.md) | [APPLE_REVIEW_RISKS.md](./APPLE_REVIEW_RISKS.md)
 
 ## What Happens on Each Push
 
