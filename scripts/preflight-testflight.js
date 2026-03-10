@@ -172,9 +172,7 @@ check(
 console.log("\n── TestFlight Docs ──");
 const docs = [
   "TESTFLIGHT.md",
-  "APPLE_VALUES.md",
-  "CODEMAGIC_SECRETS_MAP.md",
-  "FIRST_TESTFLIGHT_BUILD_CHECKLIST.md",
+  "TESTFLIGHT_QUICKSTART.md",
   "TESTFLIGHT_FAILURE_MODES.md",
 ];
 for (const doc of docs) {
@@ -204,7 +202,7 @@ console.log("═".repeat(50));
 if (fail === 0) {
   console.log("\n🟢 REPO IS READY for Codemagic build.");
   console.log("   Remaining requirement: Apple portal values in Codemagic UI.");
-  console.log("   Follow FIRST_TESTFLIGHT_BUILD_CHECKLIST.md to complete setup.\n");
+  console.log("   Follow TESTFLIGHT_QUICKSTART.md to complete setup.\n");
 } else {
   console.log("\n🔴 REPO HAS ISSUES — fix before triggering build.\n");
   process.exit(1);

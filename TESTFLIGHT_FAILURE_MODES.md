@@ -75,3 +75,52 @@
 **Cause**: The WebView can't reach `https://explainit-one.vercel.app` — either Vercel is down or there's a network issue.
 **Where**: On the physical device.
 **Fix**: Verify the URL is accessible in Safari on the same device. Check Vercel deployment status. The `capacitor.config.json` `server.url` must be `https://explainit-one.vercel.app`.
+
+---
+
+## How to Read Codemagic Build Logs
+
+### What to search for by step
+
+| Failed step | Search log for | Meaning |
+|------------|----------------|---------|
+| Install dependencies | `npm ERR!`, `ERESOLVE` | Dependency issue |
+| Sync Capacitor | `webDir "out" not found` | mkdir step missing |
+| Code signing | `No provisioning profiles`, `Authentication failed`, `401` | API key issue |
+| Build iOS | `error:`, `Swift Compiler Error`, `missing package product` | Xcode/SPM issue |
+| Publish | `ERROR ITMS-`, `already exists`, `No suitable application records` | Upload issue |
+
+### Where to find Xcode logs
+
+Codemagic saves full Xcode build logs as artifacts → download from Artifacts section → `/tmp/xcodebuild_logs/*.log` → search for `error:`.
+
+---
+
+## Failure Report Template
+
+When reporting a failed build, copy this template and fill it in:
+
+```
+BUILD FAILURE REPORT
+====================
+Step that failed: [exact step name from Codemagic]
+Build URL:        [paste Codemagic build URL]
+Build number:     [if visible]
+
+Last 30 lines of failed step output:
+-----
+[paste here]
+-----
+
+Error lines from Xcode log (if "Build iOS" failed):
+-----
+[paste here]
+-----
+
+Apple values used:
+- APP_STORE_APP_ID: [first 3 digits]***
+- KEY_ID: [value]
+- ISSUER_ID: [first 8 chars]***
+- Bundle ID registered in portal: [yes/no]
+- Internal Testers group exists: [yes/no]
+```

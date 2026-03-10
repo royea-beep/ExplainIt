@@ -71,20 +71,17 @@ One page. Everything you need. Follow top to bottom.
 ## Step 6 — Validate Your Values (~1 min)
 
 ```bash
-# Option A: Quick format check with local file
 cp apple-values.template.json apple-values.local.json
-# Edit apple-values.local.json with your 4 values
-node scripts/validate-apple-values.js --values apple-values.local.json
-
-# Option B: Manual checklist (no file needed)
-node scripts/validate-apple-values.js
+# Edit apple-values.local.json with your 4 values from Steps 3-4
+node scripts/build-day.js --values apple-values.local.json
 ```
 
-**What the validator checks**:
-- APP_STORE_APP_ID is purely numeric (7-15 digits)
-- KEY_ID is exactly 10 uppercase alphanumeric characters
-- ISSUER_ID is UUID format (8-4-4-4-12 hex with dashes)
-- .p8 filename matches Apple convention
+This single command checks both repo readiness (30 checks) and Apple value formats. It catches:
+- APP_STORE_APP_ID that's not numeric (common: pasting Key ID instead)
+- KEY_ID that's not exactly 10 uppercase alphanumeric characters
+- ISSUER_ID that's not UUID format
+- .p8 filename that doesn't match Apple convention
+- Mismatched Key ID vs .p8 filename
 
 ## Step 7 — Connect Codemagic (~5 min)
 
@@ -113,10 +110,6 @@ node scripts/validate-apple-values.js
 ## Step 8 — Trigger First Build (~1 min)
 
 ```bash
-# Final repo check
-node scripts/preflight-testflight.js
-
-# Trigger
 git commit --allow-empty -m "chore: trigger first TestFlight build"
 git push origin master
 ```
@@ -137,7 +130,7 @@ Watch in Codemagic dashboard. Expected steps in order:
 | 6 | Build iOS | 3-8 min | `.ipa` created |
 | 7 | Publish | 1-2 min | "Published to App Store Connect" |
 
-**If any step fails**: note the step name + last 30 lines of log. See TESTFLIGHT_FAILURE_MODES.md.
+**If any step fails**: see TESTFLIGHT_FAILURE_MODES.md — find by step name, use the failure report template at the bottom.
 
 ## Step 10 — Verify on iPhone (~30 min wait)
 
