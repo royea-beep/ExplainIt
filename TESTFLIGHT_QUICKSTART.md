@@ -117,12 +117,17 @@ Before triggering the build, confirm these in Codemagic UI:
 
 ## Step 8 — Trigger First Build (~1 min)
 
+**Recommended for first build** (doesn't depend on webhook setup):
+
+1. Codemagic dashboard → your app → **Start new build**
+2. Branch: `master`
+3. Workflow: `ios-testflight`
+4. Click **Start new build**
+
+**For all future builds** (after webhook is confirmed working):
 ```bash
-git commit --allow-empty -m "chore: trigger first TestFlight build"
 git push origin master
 ```
-
-Or: Codemagic dashboard → Start new build → branch `master` → workflow `ios-testflight`.
 
 ## Step 9 — Monitor (~10-15 min)
 
@@ -149,6 +154,8 @@ Watch in Codemagic dashboard. Expected steps in order:
 5. App opens → loads from explainit-one.vercel.app
 
 **If app shows blank screen**: the Vercel deployment is down, not an app issue. Check URL in Safari first.
+
+**If the app loads and you can navigate** → first TestFlight build is complete. You're done.
 
 ---
 
