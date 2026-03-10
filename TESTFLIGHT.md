@@ -72,7 +72,7 @@ See **[APPLE_REVIEW_RISKS.md](./APPLE_REVIEW_RISKS.md)** for full analysis.
 - **App icon**: Single 1024x1024 asset. Modern Xcode auto-generates all sizes from this. If build fails on icon validation, generate a full icon set at appicon.co.
 - **webDir "out"**: Doesn't exist locally. Codemagic creates it during build. For local `cap sync`, run `mkdir -p out` first.
 - **No push notifications**: Not configured. Would need APNs + Capacitor push plugin.
-- **Portrait-only support**: Info.plist allows landscape. Consider restricting to portrait for phone-first UX.
+- **Portrait-only**: Info.plist locked to portrait on iPhone (iPad keeps all orientations for compatibility).
 
 ## Troubleshooting
 
