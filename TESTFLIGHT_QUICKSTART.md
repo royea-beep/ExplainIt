@@ -17,6 +17,14 @@ One page. Everything you need. Follow top to bottom.
 
 **If stuck**: enrollment pending > 48h → contact Apple Developer support via the enrollment page.
 
+## Prepare — Create your local values file now
+
+```bash
+cp apple-values.template.json apple-values.local.json
+```
+
+Keep this file open in your editor. You'll paste values directly into it during Steps 3-4.
+
 ## Step 2 — Register Bundle ID (~2 min)
 
 1. Go to https://developer.apple.com/account/resources/identifiers/list
@@ -41,7 +49,7 @@ One page. Everything you need. Follow top to bottom.
    - User Access: **Full Access**
 4. Click **Create**
 5. On the app page, find **Apple ID** (top of General section) — it's a number like `6741234567`
-6. **Write it down.** This is your `APP_STORE_APP_ID`.
+6. Paste it into `apple-values.local.json` → `APP_STORE_APP_ID` field
 
 **Common mistake**: the "Apple ID" here is NOT your email. It's a numeric ID specific to this app.
 
@@ -53,11 +61,10 @@ One page. Everything you need. Follow top to bottom.
 4. Access: **Admin** (not Developer, not App Manager — must be Admin)
 5. Click **Generate**
 6. **Download the .p8 file immediately.** You cannot download it again.
-7. Note these values (visible on the page):
-   - **Issuer ID**: UUID at top of page (same for all keys)
-   - **Key ID**: 10-char string next to key name
-
-**Write down all three: .p8 file location, Issuer ID, Key ID.**
+7. Paste into `apple-values.local.json`:
+   - **Issuer ID** (UUID at top of page) → `ISSUER_ID` field
+   - **Key ID** (10-char string next to key name) → `KEY_ID` field
+   - **.p8 filename** (e.g. `AuthKey_ABC123DEF0.p8`) → `p8File` field
 
 ## Step 5 — Create TestFlight Beta Group (~1 min)
 
@@ -70,18 +77,13 @@ One page. Everything you need. Follow top to bottom.
 
 ## Step 6 — Validate Your Values (~1 min)
 
+Your `apple-values.local.json` should now have all 4 values filled from Steps 3-4. Run:
+
 ```bash
-cp apple-values.template.json apple-values.local.json
-# Edit apple-values.local.json with your 4 values from Steps 3-4
 node scripts/build-day.js --values apple-values.local.json
 ```
 
-This single command checks both repo readiness (28 checks) and Apple value formats. It catches:
-- APP_STORE_APP_ID that's not numeric (common: pasting Key ID instead)
-- KEY_ID that's not exactly 10 uppercase alphanumeric characters
-- ISSUER_ID that's not UUID format
-- .p8 filename that doesn't match Apple convention
-- Mismatched Key ID vs .p8 filename
+Must show green. If it shows red, it tells you exactly which value has the wrong format.
 
 ## Step 7 — Connect Codemagic (~5 min)
 
