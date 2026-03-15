@@ -59,13 +59,10 @@ export async function createCheckoutUrl(
     data: {
       type: 'checkouts',
       attributes: {
-        store_id: Number(STORE_ID),
-        variant_id: variantId,
         product_options: {
           redirect_url: successUrl,
         },
         checkout_options: {
-          button_color: undefined,
           embed: false,
           media: false,
           desc: false,
@@ -78,6 +75,10 @@ export async function createCheckoutUrl(
             plan,
           },
         },
+      },
+      relationships: {
+        store: { data: { type: 'stores', id: String(STORE_ID) } },
+        variant: { data: { type: 'variants', id: String(variantId) } },
       },
     },
   };
