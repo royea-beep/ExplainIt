@@ -1,0 +1,265 @@
+# =============================================================================
+# iOS TestFlight — Build, archive, and upload to TestFlight
+# =============================================================================
+#
+# Required GitHub Actions Secrets:
+#
+#   IOS_CERTIFICATE_BASE64        — Base64-encoded Apple Distribution certificate (.p12)
+#   IOS_CERTIFICATE_PASSWORD      — Password used when exporting the .p12
+#   IOS_PROVISIONING_PROFILE_BASE64 — Base64-encoded App Store provisioning profile (.mobileprovision)
+#   APPLE_TEAM_ID                 — Apple Developer Team ID (default: 3K9KJNGL9U)
+#   APPLE_ID                      — Apple ID email (e.g. royearguan@gmail.com)
+#   APP_SPECIFIC_PASSWORD         — App-specific password from appleid.apple.com
+#
+# How to encode secrets (Mac):
+#   base64 -i distribution.p12 | tr -d '\n' | pbcopy
+#   base64 -i profile.mobileprovision | tr -d '\n' | pbcopy
+#   base64 -i AuthKey_XXXXXXXX.p8 | tr -d '\n' | pbcopy
+#
+# How to encode secrets (Windows / Git Bash):
+#   cat distribution.p12 | base64 -w 0 | clip
+#   cat profile.mobileprovision | base64 -w 0 | clip
+#   cat AuthKey_XXXXXXXX.p8 | base64 -w 0 | clip
+#
+# How to encode secrets (Windows / PowerShell):
+#   [Convert]::ToBase64String([IO.File]::ReadAllBytes("distribution.p12")) | Set-Clipboard
+#   [Convert]::ToBase64String([IO.File]::ReadAllBytes("profile.mobileprovision")) | Set-Clipboard
+#   [Convert]::ToBase64String([IO.File]::ReadAllBytes("AuthKey_XXXXXXXX.p8")) | Set-Clipboard
+#
+# =============================================================================
+
+name: iOS TestFlight
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-testflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-upload:
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check required secrets
+        run: |
+          MISSING=""
+          [ -z "${{ secrets.DISTRIBUTION_P12_BASE64 }}" ] && MISSING="$MISSING DISTRIBUTION_P12_BASE64"
+          [ -z "${{ secrets.DISTRIBUTION_P12_PASSWORD }}" ] && MISSING="$MISSING DISTRIBUTION_P12_PASSWORD"
+          [ -z "${{ secrets.PROVISIONING_PROFILE_BASE64 }}${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" ] && MISSING="$MISSING PROVISIONING_PROFILE_BASE64"
+          [ -z "${{ secrets.APPLE_ID }}" ] && MISSING="$MISSING APPLE_ID"
+          [ -z "${{ secrets.APP_SPECIFIC_PASSWORD }}" ] && MISSING="$MISSING APP_SPECIFIC_PASSWORD"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing GitHub Actions secrets:$MISSING"
+            echo "See MOBILE_SIGNING_CHECKLIST.md for how to obtain each value."
+            exit 1
+          fi
+          echo "All required secrets are set."
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create minimal web dir for Capacitor
+        run: |
+          mkdir -p out
+          echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=https://explainit-one.vercel.app"></head><body>Loading...</body></html>' > out/index.html
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install Apple certificate and provisioning profile
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.DISTRIBUTION_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_P12_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 || secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          # Paths
+          CERT_PATH=$RUNNER_TEMP/distribution.p12
+          PP_PATH=$RUNNER_TEMP/profile.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 12)
+
+          # Decode certificate and provisioning profile
+          echo -n "$CERTIFICATE_BASE64" | base64 --decode > "$CERT_PATH"
+          echo -n "$PROFILE_BASE64" | base64 --decode > "$PP_PATH"
+
+          # Create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate into keychain
+          CERT_PASS=$(printf '%s' "$CERTIFICATE_PASSWORD" | tr -d '\n\r')
+          if ! security import "$CERT_PATH" -k "$KEYCHAIN_PATH" -P "$CERT_PASS" -T /usr/bin/codesign 2>/dev/null; then
+            echo "Direct import failed, re-exporting via PEM round-trip..."
+            openssl pkcs12 -in "$CERT_PATH" -passin "pass:$CERT_PASS" -nocerts -nodes -out $RUNNER_TEMP/key.pem
+            openssl pkcs12 -in "$CERT_PATH" -passin "pass:$CERT_PASS" -nokeys -out $RUNNER_TEMP/cert.pem
+            openssl pkcs12 -export -out $RUNNER_TEMP/distribution_compat.p12 -inkey $RUNNER_TEMP/key.pem -in $RUNNER_TEMP/cert.pem -password "pass:$CERT_PASS"
+            security import $RUNNER_TEMP/distribution_compat.p12 -k "$KEYCHAIN_PATH" -P "$CERT_PASS" -T /usr/bin/codesign
+          fi
+
+          # Allow codesign to access keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain
+
+          # Validate provisioning profile
+          echo "Profile size: $(wc -c < "$PP_PATH") bytes"
+          file "$PP_PATH" || true
+          if ! head -c 10 "$PP_PATH" | grep -q "0"; then
+            echo "WARNING: Profile may not be a valid binary plist/DER file"
+          fi
+
+          # Install provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Find provisioning profile UUID
+        id: profile
+        run: |
+          PROFILE_PATH=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | head -1)
+          echo "Profile path: $PROFILE_PATH"
+          echo "Profile size: $(wc -c < "$PROFILE_PATH") bytes"
+          file "$PROFILE_PATH" || true
+
+          # Try security cms first
+          if PLIST=$(security cms -D -i "$PROFILE_PATH" 2>/dev/null); then
+            UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< "$PLIST")
+          else
+            echo "security cms failed, extracting plist directly..."
+            # Mobileprovision files contain an embedded plist between XML tags
+            PLIST=$(sed -n '/<?xml/,/<\/plist>/p' "$PROFILE_PATH")
+            UUID=$(echo "$PLIST" | python3 -c "
+          import plistlib, sys
+          pl = plistlib.loads(sys.stdin.buffer.read())
+          print(pl['UUID'])
+          ")
+          fi
+
+          echo "uuid=$UUID" >> $GITHUB_OUTPUT
+          echo "Profile UUID: $UUID"
+
+      - name: Bump build number (unique per run)
+        working-directory: ios/App
+        run: |
+          BUILD_NUMBER=$(( ${{ github.run_number }} + 100 ))
+          echo "Setting build number to: $BUILD_NUMBER (run_number + 100)"
+          # Update project.pbxproj
+          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER/g" App.xcodeproj/project.pbxproj
+          sed -i '' "s/MARKETING_VERSION = [0-9.]*/MARKETING_VERSION = 2.3/g" App.xcodeproj/project.pbxproj
+          grep "CURRENT_PROJECT_VERSION\|MARKETING_VERSION" App.xcodeproj/project.pbxproj
+          # ALSO update Info.plist (xcodebuild reads this for the actual bundle version)
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 2.3.0" App/Info.plist
+          echo "Info.plist updated:"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" App/Info.plist
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" App/Info.plist
+
+      - name: Set signing to manual in Xcode project
+        working-directory: ios/App
+        run: |
+          PROFILE_UUID="${{ steps.profile.outputs.uuid }}"
+          # Patch Release build settings to use manual signing with our provisioning profile
+          sed -i '' "/504EC3181FED79650016851F \/\* Release \*\//,/};/{
+            s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = \"$PROFILE_UUID\";/
+          }" App.xcodeproj/project.pbxproj
+
+      - name: Build and archive
+        working-directory: ios/App
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID || '3K9KJNGL9U' }}
+        run: |
+          xcodebuild archive \
+            -project App.xcodeproj \
+            -scheme App \
+            -archivePath "$RUNNER_TEMP/ExplainIt.xcarchive" \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="${TEAM_ID}" \
+            PRODUCT_BUNDLE_IDENTIFIER="il.co.ftable.explainit"
+
+      - name: Export IPA
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID || '3K9KJNGL9U' }}
+        run: |
+          EXPORT_DIR="$RUNNER_TEMP/export"
+          mkdir -p "$EXPORT_DIR"
+
+          cat > /tmp/ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>teamID</key>
+            <string>TEAM_ID_PLACEHOLDER</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>il.co.ftable.explainit</key>
+              <string>PROFILE_UUID_PLACEHOLDER</string>
+            </dict>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>compileBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # Replace placeholders
+          sed -i '' "s/TEAM_ID_PLACEHOLDER/${TEAM_ID}/" /tmp/ExportOptions.plist
+          sed -i '' "s/PROFILE_UUID_PLACEHOLDER/${{ steps.profile.outputs.uuid }}/" /tmp/ExportOptions.plist
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/ExplainIt.xcarchive" \
+            -exportPath "$EXPORT_DIR" \
+            -exportOptionsPlist /tmp/ExportOptions.plist
+
+          echo "Exported IPA:"
+          ls -la "$EXPORT_DIR"/*.ipa
+
+      - name: Upload to TestFlight
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+        run: |
+          IPA_PATH=$(ls "$RUNNER_TEMP/export"/*.ipa | head -1)
+          echo "Uploading: $IPA_PATH"
+
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --username "$APPLE_ID" \
+            --password "$APP_SPECIFIC_PASSWORD"
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
