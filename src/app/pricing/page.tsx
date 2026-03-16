@@ -9,6 +9,12 @@ import { AuthModal } from "@/components/AuthModal";
 
 type PlanId = "free" | "pro" | "team";
 
+interface Feature {
+  labelEn: string;
+  labelHe: string;
+  included: boolean;
+}
+
 const PLANS = [
   {
     id: "free" as const,
@@ -21,8 +27,15 @@ const PLANS = [
     pipelines: 3,
     pipelinesLabelEn: "3 pipelines/month",
     pipelinesLabelHe: "3 פעמים בחודש",
-    featuresEn: ["Screenshots", "Videos", "PDF export", "Demo page"],
-    featuresHe: ["צילומי מסך", "סרטונים", "ייצוא PDF", "עמוד דמו"],
+    badgeEn: null,
+    badgeHe: null,
+    features: [
+      { labelEn: "Screenshots & videos", labelHe: "צילומי מסך וסרטונים", included: true },
+      { labelEn: "Basic processing", labelHe: "עיבוד בסיסי", included: true },
+      { labelEn: "Demo page", labelHe: "עמוד דמו", included: true },
+      { labelEn: "PDF export", labelHe: "ייצוא PDF", included: false },
+      { labelEn: "Priority processing", labelHe: "עיבוד מועדף", included: false },
+    ] as Feature[],
     ctaEn: "Get Started",
     ctaHe: "התחל",
     highlighted: false,
@@ -38,8 +51,15 @@ const PLANS = [
     pipelines: 50,
     pipelinesLabelEn: "50 pipelines/month",
     pipelinesLabelHe: "50 פעמים בחודש",
-    featuresEn: ["Everything in Free", "50 pipelines/mo", "Priority support", "Smart Mode"],
-    featuresHe: ["הכל בחינם", "50 פעמים בחודש", "תמיכה מועדפת", "מצב חכם"],
+    badgeEn: "Most Popular",
+    badgeHe: "הכי פופולרי",
+    features: [
+      { labelEn: "Everything in Free", labelHe: "הכל בחינם", included: true },
+      { labelEn: "50 pipelines/month", labelHe: "50 פעמים בחודש", included: true },
+      { labelEn: "PDF export", labelHe: "ייצוא PDF", included: true },
+      { labelEn: "Priority processing", labelHe: "עיבוד מועדף", included: true },
+      { labelEn: "Smart Mode", labelHe: "מצב חכם", included: true },
+    ] as Feature[],
     ctaEn: "Subscribe",
     ctaHe: "הרשמה",
     highlighted: true,
@@ -55,10 +75,17 @@ const PLANS = [
     pipelines: -1,
     pipelinesLabelEn: "Unlimited pipelines",
     pipelinesLabelHe: "פעמים ללא הגבלה",
-    featuresEn: ["Everything in Pro", "Unlimited pipelines", "Team dashboard", "API access"],
-    featuresHe: ["הכל ב-Pro", "פעמים ללא הגבלה", "לוח צוות", "גישה ל-API"],
-    ctaEn: "Upgrade",
-    ctaHe: "שדרוג",
+    badgeEn: null,
+    badgeHe: null,
+    features: [
+      { labelEn: "Everything in Pro", labelHe: "הכל ב-Pro", included: true },
+      { labelEn: "Unlimited pipelines", labelHe: "פעמים ללא הגבלה", included: true },
+      { labelEn: "5 team seats", labelHe: "5 מקומות לצוות", included: true },
+      { labelEn: "API access", labelHe: "גישה ל-API", included: true },
+      { labelEn: "Priority support", labelHe: "תמיכה מועדפת", included: true },
+    ] as Feature[],
+    ctaEn: "Subscribe",
+    ctaHe: "הרשמה",
     highlighted: false,
   },
 ];
@@ -131,15 +158,23 @@ export default function PricingPage() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {PLANS.map((plan) => (
+            {PLANS.map((plan) => {
+              const badge = isHe ? plan.badgeHe : plan.badgeEn;
+              return (
               <div
                 key={plan.id}
-                className={`glass p-6 rounded-2xl flex flex-col ${
+                className={`glass p-6 rounded-2xl flex flex-col relative ${
                   plan.highlighted
                     ? "ring-2 ring-indigo-500/50 shadow-lg shadow-indigo-500/10"
                     : ""
                 }`}
               >
+                {badge && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-indigo-500 text-white text-xs font-semibold whitespace-nowrap">
+                    {badge}
+                  </div>
+                )}
+
                 <div className="mb-4">
                   <h2 className="text-xl font-bold text-white">
                     {isHe ? plan.nameHe : plan.nameEn}
@@ -158,15 +193,23 @@ export default function PricingPage() {
                 </div>
 
                 <ul className="space-y-2 flex-1 mb-6">
-                  {(isHe ? plan.featuresHe : plan.featuresEn).map((feature, i) => (
+                  {plan.features.map((feature, i) => (
                     <li
                       key={i}
-                      className="flex items-center gap-2 text-sm text-white/80"
+                      className={`flex items-center gap-2 text-sm ${
+                        feature.included ? "text-white/80" : "text-white/30"
+                      }`}
                     >
-                      <span className="w-5 h-5 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-xs">
-                        ✓
+                      <span
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+                          feature.included
+                            ? "bg-green-500/20 text-green-400"
+                            : "bg-white/5 text-white/20"
+                        }`}
+                      >
+                        {feature.included ? "\u2713" : "\u2715"}
                       </span>
-                      {feature}
+                      {isHe ? feature.labelHe : feature.labelEn}
                     </li>
                   ))}
                 </ul>
@@ -203,7 +246,8 @@ export default function PricingPage() {
                   </button>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-10 text-center">
