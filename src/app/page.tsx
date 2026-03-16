@@ -8,6 +8,45 @@ import { useLanguage } from "@/lib/language-context";
 import { useAuth } from "@/lib/auth-context";
 import { triggerConfetti } from "@/lib/confetti";
 
+// ── ftable Analyzer narration script (75 seconds) ──────────────────────────
+const FTABLE_ANALYZER_SCRIPT = `
+Are you spending hours writing product descriptions for every item in your catalog?
+Stop. There's a better way.
+
+Introducing ftable Analyzer — the AI-powered listing engine built for e-commerce sellers on Wix, Shopify, and WooCommerce.
+
+Here's how it works: upload any product image. In seconds, our AI vision model reads every detail — material, style, use case, target buyer — and generates a complete, ready-to-publish listing.
+
+You get a professional product title, a compelling description, SEO-optimized keywords, and smart pricing recommendations — all in one click.
+
+No copywriting experience needed. No expensive agencies. Just upload, analyze, and paste.
+
+Whether you're launching ten products or ten thousand, ftable Analyzer scales with you.
+
+Try it free today. Five credits, no credit card required.
+
+ftable Analyzer — turn any product photo into a listing that sells.
+`.trim();
+
+// Default demo values for the Generate MP4 button
+const DEMO_VIDEO_CONFIG = {
+  url: "https://analyzer.ftable.co.il",
+  script: FTABLE_ANALYZER_SCRIPT,
+  voiceId: "EXAVITQu4vr4xnSDxMaL",       // ElevenLabs "Bella"
+  avatarId: "Abigail_expressive_2024112501", // HeyGen EN avatar
+} as const;
+
+interface VideoGenerateResult {
+  outputPath: string;
+  downloadUrl: string;
+  runId: string;
+  hasAudio: boolean;
+  hasAvatar: boolean;
+  durationSeconds: number;
+  screenshotCount: number;
+  warnings?: string[];
+}
+
 type InputType = "url";
 type Stage = "idle" | "intake" | "capture" | "produce" | "document" | "done" | "error";
 type Orientation = "portrait" | "landscape";
@@ -109,6 +148,11 @@ export default function Home() {
   const [inputError, setInputError] = useState<string | null>(null);
   const [pipelineId, setPipelineId] = useState<string | null>(null);
 
+  // ── MP4 video generation state ──────────────────────────────────────────
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [videoResult, setVideoResult] = useState<VideoGenerateResult | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+
   // Apply learned defaults from Style DNA when profile loads
   const handleDefaultsLoaded = useCallback((profile: StyleProfile) => {
     setStyleOverrides({
@@ -182,6 +226,29 @@ export default function Home() {
       setInputError(null);
     }
   }, [isHe]);
+
+  const handleGenerateVideo = async () => {
+    setIsGeneratingVideo(true);
+    setVideoResult(null);
+    setVideoError(null);
+    try {
+      const res = await fetch("/api/generate-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(DEMO_VIDEO_CONFIG),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setVideoError(data.error || "Video generation failed");
+      } else {
+        setVideoResult(data as VideoGenerateResult);
+      }
+    } catch (err) {
+      setVideoError(err instanceof Error ? err.message : "Connection failed");
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  };
 
   const handleStart = async () => {
     if (isRunningRef.current) return;
@@ -513,6 +580,67 @@ export default function Home() {
                 ? isHe ? "...\u05DE\u05D9\u05D9\u05E6\u05E8" : "Generating..."
                 : isHe ? "\u05D4\u05EA\u05D7\u05DC \u05D4\u05E4\u05E7\u05D4" : "Start Production"}
             </button>
+
+            {/* ── Generate MP4 Video button ──────────────────────────────── */}
+            <div className="border-t border-white/5 pt-4 space-y-3">
+              <p className="text-xs text-white/40 text-center">
+                Demo: Generate a full narrated MP4 video for ftable Analyzer
+              </p>
+              <button
+                type="button"
+                onClick={handleGenerateVideo}
+                disabled={isGeneratingVideo}
+                className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 ${
+                  isGeneratingVideo
+                    ? "bg-amber-800 text-white/50 cursor-not-allowed"
+                    : "bg-gradient-to-r from-amber-600 to-amber-500 text-white hover:shadow-lg hover:shadow-amber-500/25 active:scale-[0.98]"
+                }`}
+              >
+                {isGeneratingVideo ? "Generating MP4 Video..." : "Generate MP4 Video"}
+              </button>
+
+              {/* Video generation result */}
+              {videoResult && (
+                <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl space-y-2">
+                  <p className="text-sm font-bold text-green-400">MP4 Video Ready</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-white/60">
+                    <span>{videoResult.screenshotCount} screens</span>
+                    <span>{videoResult.durationSeconds}s</span>
+                    <span>
+                      {videoResult.hasAvatar ? "Avatar" : "No avatar"} / {videoResult.hasAudio ? "Audio" : "Silent"}
+                    </span>
+                  </div>
+                  {videoResult.warnings && videoResult.warnings.length > 0 && (
+                    <ul className="text-xs text-amber-400/80 space-y-0.5">
+                      {videoResult.warnings.map((w, i) => (
+                        <li key={i} dir="ltr">{w}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <a
+                    href={videoResult.downloadUrl}
+                    download
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-green-600 to-green-500 text-white font-semibold text-sm hover:shadow-lg hover:shadow-green-500/25 transition-all"
+                  >
+                    Download MP4
+                  </a>
+                </div>
+              )}
+
+              {/* Video generation error */}
+              {videoError && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl" role="alert">
+                  <p className="text-red-400 text-sm" dir="ltr">{videoError}</p>
+                  <button
+                    type="button"
+                    onClick={() => setVideoError(null)}
+                    className="mt-2 text-xs text-white/50 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1 rounded-lg transition"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+            </div>
           </section>
 
           {/* Pipeline Status */}

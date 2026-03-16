@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2 libasound2 libwayland-client0 \
     fonts-noto-cjk fonts-noto-color-emoji \
     ca-certificates wget \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
@@ -34,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2 libasound2 libwayland-client0 \
     fonts-noto-cjk fonts-noto-color-emoji \
     ca-certificates \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/package.json /app/package-lock.json* ./
