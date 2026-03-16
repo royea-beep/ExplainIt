@@ -38,6 +38,11 @@ apple-values.local.json
 
 # exports
 /exports
+/output
+
+# runtime artifacts
+test-product.jpg
+ss*.png
 
 # typescript
 *.tsbuildinfo
@@ -50,3 +55,4 @@ prisma/dev.db
 .claude/
 
 packages/
+CLAUDE.md
