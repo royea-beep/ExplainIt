@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CaptureEngine } from '@/lib/capture-engine';
 import { validateUrl, clampMaxScreens } from '@royea/shared-utils/validate-url';
+import { getUserIdFromRequest } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
+  // Auth gate: require JWT user OR valid API key
+  const userId = await getUserIdFromRequest(request);
+  const apiKey = request.headers.get('x-api-key');
+  if (!userId && (!apiKey || apiKey !== process.env.EXPLAINIT_API_KEY)) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { url, maxScreens, viewport, credentials } = body;
