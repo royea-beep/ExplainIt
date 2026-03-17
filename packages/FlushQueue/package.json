@@ -5,15 +5,20 @@
   "author": "Roy Arguan <royearguan@gmail.com>",
   "license": "MIT",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
     }
   },
-  "files": ["dist", "README.md"],
+  "typesVersions": {
+    "*": {
+      ".": ["./src/index.ts"]
+    }
+  },
+  "files": ["src", "README.md"],
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build"
