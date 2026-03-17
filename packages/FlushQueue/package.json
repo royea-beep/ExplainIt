@@ -1,0 +1,30 @@
+{
+  "name": "@royea/flush-queue",
+  "version": "1.0.0",
+  "description": "Client-side event buffer — queue events, batch POST to a configurable URL, with retry and optional offline persist.",
+  "author": "Roy Arguan <royearguan@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["event-queue", "batch", "flush", "analytics", "offline", "buffer"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/royea-beep/flush-queue"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

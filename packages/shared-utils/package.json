@@ -1,0 +1,65 @@
+{
+  "name": "@royea/shared-utils",
+  "version": "1.0.0",
+  "description": "Shared utilities extracted from Roy's project portfolio — error handling, content filtering, rate limiting, analytics, auth, encryption, i18n, and more.",
+  "author": "Roy Arguan <royearguan@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    "./errors": "./src/errors/index.ts",
+    "./content-filter": "./src/content-filter/index.ts",
+    "./rate-limit": "./src/rate-limit/index.ts",
+    "./analytics": "./src/analytics/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./auth-context": "./src/auth-context.tsx",
+    "./auth-guard": "./src/auth-guard.ts",
+    "./crypto": "./src/crypto/index.ts",
+    "./i18n": "./src/i18n/index.tsx",
+    "./validate-url": "./src/validate-url/index.ts",
+    "./resilience": "./src/resilience/index.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "errors": ["./src/errors/index.ts"],
+      "content-filter": ["./src/content-filter/index.ts"],
+      "rate-limit": ["./src/rate-limit/index.ts"],
+      "analytics": ["./src/analytics/index.ts"],
+      "auth": ["./src/auth/index.ts"],
+      "auth-context": ["./src/auth-context.tsx"],
+      "auth-guard": ["./src/auth-guard.ts"],
+      "crypto": ["./src/crypto/index.ts"],
+      "i18n": ["./src/i18n/index.tsx"],
+      "validate-url": ["./src/validate-url/index.ts"],
+      "resilience": ["./src/resilience/index.ts"]
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"no tests yet\""
+  },
+  "peerDependencies": {
+    "next": ">=13.0.0",
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "next": "^14.2.35",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

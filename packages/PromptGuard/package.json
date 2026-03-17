@@ -1,0 +1,30 @@
+{
+  "name": "@royea/prompt-guard",
+  "version": "1.0.0",
+  "description": "Sanitize user text before sending to LLMs — PII masking + prompt-injection blocking.",
+  "author": "Roy Arguan <royearguan@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["llm", "sanitize", "prompt-injection", "pii", "security", "ai-safety"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/royea-beep/prompt-guard"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
