@@ -23,6 +23,7 @@ model User {
   updatedAt     DateTime @updatedAt @map("updated_at")
   refreshTokens RefreshToken[]
   pipelines     Pipeline[]
+  apiKeys       ApiKey[]
   styleProfile  StyleProfile?
   @@map("users")
 }
@@ -57,6 +58,21 @@ model Pipeline {
   @@index([userId])
   @@index([userId, createdAt])
   @@map("pipelines")
+}
+
+model ApiKey {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String    @default("Default")
+  prefix    String                          // first 16 chars for display
+  hash      String    @unique               // SHA-256 of the full key
+  lastUsedAt DateTime? @map("last_used_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  @@index([hash])
+  @@index([userId])
+  @@map("api_keys")
 }
 
 model StyleProfile {
