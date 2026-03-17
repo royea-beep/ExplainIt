@@ -54,5 +54,4 @@ prisma/dev.db
 # claude
 .claude/
 
-packages/
 CLAUDE.md

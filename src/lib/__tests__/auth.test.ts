@@ -73,18 +73,20 @@ describe('auth cookies', () => {
   });
 
   it('should NOT include Secure in non-production', () => {
-    const prev = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
+    const env = process.env as Record<string, string | undefined>;
+    const prev = env.NODE_ENV;
+    env.NODE_ENV = 'development';
     const cookie = buildAuthCookie('tok');
     expect(cookie).not.toContain('Secure');
-    process.env.NODE_ENV = prev;
+    env.NODE_ENV = prev;
   });
 
   it('should include Secure in production', () => {
-    const prev = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
+    const env = process.env as Record<string, string | undefined>;
+    const prev = env.NODE_ENV;
+    env.NODE_ENV = 'production';
     const cookie = buildAuthCookie('tok');
     expect(cookie).toContain('Secure');
-    process.env.NODE_ENV = prev;
+    env.NODE_ENV = prev;
   });
 });
