@@ -34,7 +34,8 @@ const SPOTLIGHT_PNG_PATH = path.resolve(OUTPUT_ROOT, 'spotlight.png');
 
 // ── Windows font paths for drawtext ────────────────────────────────────────
 const FONT_ARIAL  = 'C\\:/Windows/Fonts/arial.ttf';   // Latin
-const FONT_DAVID  = 'C\\:/Windows/Fonts/david.ttf';   // Hebrew (David)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const FONT_DAVID  = 'C\\:/Windows/Fonts/david.ttf';   // Hebrew (David) — reserved for RTL support
 
 // ── API endpoints ───────────────────────────────────────────────────────────
 const ELEVENLABS_TTS_URL = (voiceId: string) =>
@@ -415,11 +416,34 @@ async function captureAnalyzerScreenshots(
     if (results.length < maxScreenshots) {
       try {
         await page.goto('https://analyzer.ftable.co.il/dashboard', { waitUntil: 'networkidle', timeout: 20_000 });
-        await page.waitForTimeout(2_000);
+        await page.waitForTimeout(3_000);
+
+        // Check for error page before capturing
+        const hasError = await page.evaluate(() => {
+          const text = (document.body?.innerText ?? '').toLowerCase();
+          return (
+            text.includes('error') ||
+            text.includes('שגיאה') ||
+            text.includes('not found') ||
+            text.includes('404') ||
+            (document.body?.children?.length ?? 0) === 0
+          );
+        });
+
         const ss5Path = path.join(outputDir, 'screen_005.png');
-        await page.screenshot({ path: ss5Path, fullPage: false });
-        results.push({ filePath: ss5Path, label: STEP_LABELS[5] });
-        console.log('[mp4-producer] ss5: dashboard page');
+        if (!hasError) {
+          await page.screenshot({ path: ss5Path, fullPage: false });
+          results.push({ filePath: ss5Path, label: STEP_LABELS[5] });
+          console.log('[mp4-producer] ss5: dashboard page');
+        } else {
+          // Fallback: reuse previous screenshot rather than capture an error screen
+          const prev = results[results.length - 1];
+          if (prev) {
+            await fs.copyFile(prev.filePath, ss5Path);
+            results.push({ filePath: ss5Path, label: STEP_LABELS[5] });
+            console.log('[mp4-producer] ss5: dashboard had error indicators, reusing previous screenshot');
+          }
+        }
       } catch (err) {
         console.warn('[mp4-producer] Dashboard screenshot failed:', err);
       }
@@ -714,54 +738,31 @@ async function stitchWithFfmpeg(opts: {
   }
 
   // ── Step B: CTA slide (slide_006.mp4) ──────────────────────────────────
-  // Hebrew text with David font + English fallback + gold URL line
+  // English-only — ffmpeg drawtext cannot render Hebrew unicode escapes (renders \u05xx literally)
   const ctaSlideOut = path.join(outDir, `slide_${String(slides.length).padStart(3, '0')}.mp4`);
   const escapedCtaOut = ffmpegEscapePath(ctaSlideOut);
 
-  // Hebrew lines use david.ttf; URL line uses arial.ttf in gold
   const ctaCmd = [
     'ffmpeg -y',
     `-f lavfi -i "color=black:size=1280x720:duration=${SLIDE_DURATION_SEC}"`,
     `-vf "`,
-    `drawtext=text='\\u05e0\\u05e1\\u05d5\\u05d5 \\u05d0\\u05ea ftable Analyzer \\u05d7\\u05d9\\u05e0\\u05dd'`,
-    `:fontfile='${FONT_DAVID}':fontcolor=white:fontsize=42:x=(w-text_w)/2:y=240,`,
-    `drawtext=text='5 \\u05e7\\u05e8\\u05d3\\u05d9\\u05d8\\u05d9\\u05dd - \\u05dc\\u05dc\\u05d0 \\u05e6\\u05d5\\u05e8\\u05da \\u05d1\\u05db\\u05e8\\u05d8\\u05d9\\u05e1 \\u05d0\\u05e9\\u05e8\\u05d0\\u05d9'`,
-    `:fontfile='${FONT_DAVID}':fontcolor=white:fontsize=28:x=(w-text_w)/2:y=320,`,
-    `drawtext=text='Try ftable Analyzer free - 5 credits, no credit card needed'`,
-    `:fontfile='${FONT_ARIAL}':fontcolor=white:fontsize=22:x=(w-text_w)/2:y=390,`,
+    `drawtext=text='ftable Analyzer'`,
+    `:fontfile='${FONT_ARIAL}':fontcolor=white:fontsize=54:x=(w-text_w)/2:y=195,`,
+    `drawtext=text='AI-powered product analysis for e-commerce'`,
+    `:fontfile='${FONT_ARIAL}':fontcolor=white:fontsize=28:x=(w-text_w)/2:y=285,`,
+    `drawtext=text='Try free - 5 credits, no credit card needed'`,
+    `:fontfile='${FONT_ARIAL}':fontcolor=white:fontsize=24:x=(w-text_w)/2:y=355,`,
     `drawtext=text='analyzer.ftable.co.il'`,
-    `:fontfile='${FONT_ARIAL}':fontcolor=#FFD700:fontsize=34:x=(w-text_w)/2:y=445"`,
+    `:fontfile='${FONT_ARIAL}':fontcolor=#FFD700:fontsize=36:x=(w-text_w)/2:y=435"`,
     `-c:v libx264 -preset fast -crf 22 -pix_fmt yuv420p -r 25`,
     `"${escapedCtaOut}"`,
   ].join(' ');
 
   console.log('[mp4-producer] CTA slide cmd:', ctaCmd.slice(0, 150) + '...');
-  try {
-    const { stderr: ctaErr } = await execAsync(ctaCmd, { timeout: 30_000 });
-    if (ctaErr) console.log('[mp4-producer] CTA stderr:', ctaErr.slice(-200));
-    slidePaths.push(ctaSlideOut);
-    console.log('[mp4-producer] CTA slide created');
-  } catch (err) {
-    // Hebrew unicode escapes may fail on some builds — fall back to pure English CTA
-    console.warn('[mp4-producer] CTA Hebrew failed, using English fallback:', (err as Error).message?.slice(0, 80));
-    const ctaFallbackCmd = [
-      'ffmpeg -y',
-      `-f lavfi -i "color=black:size=1280x720:duration=${SLIDE_DURATION_SEC}"`,
-      `-vf "`,
-      `drawtext=text='Try ftable Analyzer free today'`,
-      `:fontfile='${FONT_ARIAL}':fontcolor=white:fontsize=42:x=(w-text_w)/2:y=260,`,
-      `drawtext=text='5 credits - no credit card needed'`,
-      `:fontfile='${FONT_ARIAL}':fontcolor=white:fontsize=30:x=(w-text_w)/2:y=340,`,
-      `drawtext=text='analyzer.ftable.co.il'`,
-      `:fontfile='${FONT_ARIAL}':fontcolor=#FFD700:fontsize=36:x=(w-text_w)/2:y=420"`,
-      `-c:v libx264 -preset fast -crf 22 -pix_fmt yuv420p -r 25`,
-      `"${escapedCtaOut}"`,
-    ].join(' ');
-    const { stderr: fbErr } = await execAsync(ctaFallbackCmd, { timeout: 30_000 });
-    if (fbErr) console.log('[mp4-producer] CTA fallback stderr:', fbErr.slice(-200));
-    slidePaths.push(ctaSlideOut);
-    console.log('[mp4-producer] CTA fallback slide created');
-  }
+  const { stderr: ctaErr } = await execAsync(ctaCmd, { timeout: 30_000 });
+  if (ctaErr) console.log('[mp4-producer] CTA stderr:', ctaErr.slice(-200));
+  slidePaths.push(ctaSlideOut);
+  console.log('[mp4-producer] CTA slide created');
 
   // ── Step C: Concat all slides ──────────────────────────────────────────
   const concatListPath = path.join(outDir, 'concat.txt');
@@ -802,7 +803,7 @@ async function stitchWithFfmpeg(opts: {
       `-filter_complex "[2:v]scale=320:320[av];[0:v][av]overlay=W-w-20:H-h-20[out]"`,
       `-map "[out]" -map 1:a`,
       `-c:v libx264 -preset fast -crf 22 -pix_fmt yuv420p`,
-      `-c:a aac -b:a 128k`,
+      `-c:a aac -b:a 128k -async 1`,
       `-shortest`,
       `-movflags +faststart`,
       `"${escapedOutput}"`,

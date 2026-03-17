@@ -347,7 +347,7 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Link
-                href="/"
+                href="/onboarding"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-indigo-600 to-indigo-500 text-white hover:shadow-lg hover:shadow-indigo-500/25 transition"
               >
                 {isHe ? "נסה חינם" : "Try Free"}
