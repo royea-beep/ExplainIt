@@ -21,17 +21,39 @@
   },
   "typesVersions": {
     "*": {
-      "errors": ["./src/errors/index.ts"],
-      "content-filter": ["./src/content-filter/index.ts"],
-      "rate-limit": ["./src/rate-limit/index.ts"],
-      "analytics": ["./src/analytics/index.ts"],
-      "auth": ["./src/auth/index.ts"],
-      "auth-context": ["./src/auth-context.tsx"],
-      "auth-guard": ["./src/auth-guard.ts"],
-      "crypto": ["./src/crypto/index.ts"],
-      "i18n": ["./src/i18n/index.tsx"],
-      "validate-url": ["./src/validate-url/index.ts"],
-      "resilience": ["./src/resilience/index.ts"]
+      "errors": [
+        "./src/errors/index.ts"
+      ],
+      "content-filter": [
+        "./src/content-filter/index.ts"
+      ],
+      "rate-limit": [
+        "./src/rate-limit/index.ts"
+      ],
+      "analytics": [
+        "./src/analytics/index.ts"
+      ],
+      "auth": [
+        "./src/auth/index.ts"
+      ],
+      "auth-context": [
+        "./src/auth-context.tsx"
+      ],
+      "auth-guard": [
+        "./src/auth-guard.ts"
+      ],
+      "crypto": [
+        "./src/crypto/index.ts"
+      ],
+      "i18n": [
+        "./src/i18n/index.tsx"
+      ],
+      "validate-url": [
+        "./src/validate-url/index.ts"
+      ],
+      "resilience": [
+        "./src/resilience/index.ts"
+      ]
     }
   },
   "scripts": {
@@ -54,7 +76,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.0",
     "@types/node": "^22.0.0",
-    "@types/react": "^18.3.0",
+    "@types/react": "^19.2.14",
     "next": "^14.2.35",
     "typescript": "^5.7.0"
   },
