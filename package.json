@@ -7,7 +7,7 @@
     "dev": "cross-env NODE_OPTIONS=--max-old-space-size=512 next dev -p 3000",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -15,8 +15,6 @@
     "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.2.0",
     "@capacitor/ios": "^8.2.0",
-    "@libsql/client": "^0.17.0",
-    "@prisma/adapter-libsql": "^7.5.0",
     "@prisma/client": "^6.19.2",
     "@royea/flush-queue": "file:packages/FlushQueue",
     "@royea/prompt-guard": "file:packages/PromptGuard",
